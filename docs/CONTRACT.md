@@ -116,7 +116,7 @@ Header `Update URI: https://ranksphere.cloud/wordpress/plugin` → WordPress fra
 User-Agent `RankSphere-WordPress/<version>`, keine Website-Adresse) →
 
 ```json
-{ "version": "1.0.0-alpha.2", "package": "https://ranksphere.cloud/wordpress/plugin/ranksphere-1.0.0-alpha.2.zip",
+{ "version": "1.0.0-alpha.2", "package": "https://ranksphere.cloud/api/wordpress/v1/plugin/ranksphere-1.0.0-alpha.2.zip",
   "url": "https://github.com/tobiashaas/ranksphere-wp/releases/tag/v1.0.0-alpha.2",
   "requires": "6.6", "requires_php": "8.1", "tested": "7.1", "changelog": "<ul><li>…</li></ul>" }
 ```
@@ -125,6 +125,8 @@ User-Agent `RankSphere-WordPress/<version>`, keine Website-Adresse) →
   Ohne Wahl gilt die Stufe der installierten Version.
 - `404`, wenn es im Kanal nichts gibt. Das Plugin nimmt nur ein `package` vom Host von RankSphere an.
 - Quelle in RankSphere: die GitHub-Releases dieses Repos (`ranksphere.zip` + `ranksphere.json`, siehe Release-Workflow).
+- Zum Installieren von Hand: `https://ranksphere.cloud/api/wordpress/v1/plugin/latest.zip` (neueste stabile Version,
+  vor 1.0 die neueste Testversion; `?channel=alpha` usw. für einen Kanal).
 
 ## Versionierung
 
