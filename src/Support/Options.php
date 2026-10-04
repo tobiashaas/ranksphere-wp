@@ -23,12 +23,15 @@ final class Options {
 	/** Why and when the last connection ended, for the admin page. */
 	public const DISCONNECTED = 'ranksphere_disconnected';
 
+	/** Release channel for updates from RankSphere: stable, rc, beta or alpha. */
+	public const UPDATE_CHANNEL = 'ranksphere_update_channel';
+
 	/**
 	 * All options, for uninstall.
 	 *
 	 * @return list<string>
 	 */
 	public static function all(): array {
-		return array( self::VERSION, self::CONNECTION, self::DISCONNECTED );
+		return array( self::VERSION, self::CONNECTION, self::DISCONNECTED, self::UPDATE_CHANNEL );
 	}
 }

@@ -107,6 +107,25 @@ Nur für eingeloggte Benutzer mit `edit_posts` (Cookie + REST-Nonce), Daten aus 
 | `POST /crawler-visits` | `{ "day": "2026-10-04", "visits": [ { "bot": "GPTBot", "path": "/", "hits": 12 } ] }` (M5) |
 | `POST /disconnect` | die Website hat die Verbindung getrennt: `{ "reason": "admin" \| "revoked" \| "user_deleted" }` (M1) |
 
+## Plugin-Updates (Builds von ranksphere.cloud, nicht WordPress.org)
+
+Header `Update URI: https://ranksphere.cloud/wordpress/plugin` → WordPress fragt den Filter
+`update_plugins_ranksphere.cloud` (`Updates\Updater`), höchstens alle 6 Stunden (Transient je Kanal):
+
+`GET https://ranksphere.cloud/api/wordpress/v1/plugin?channel=alpha&version=1.0.0-alpha.1` (ohne Anmeldung,
+User-Agent `RankSphere-WordPress/<version>`, keine Website-Adresse) →
+
+```json
+{ "version": "1.0.0-alpha.2", "package": "https://ranksphere.cloud/wordpress/plugin/ranksphere-1.0.0-alpha.2.zip",
+  "url": "https://github.com/tobiashaas/ranksphere-wp/releases/tag/v1.0.0-alpha.2",
+  "requires": "6.6", "requires_php": "8.1", "tested": "7.1", "changelog": "<ul><li>…</li></ul>" }
+```
+
+- Kanäle `stable` < `rc` < `beta` < `alpha`: ein Kanal bekommt seine Stufe und jede stabilere (`Updates\Channel`).
+  Ohne Wahl gilt die Stufe der installierten Version.
+- `404`, wenn es im Kanal nichts gibt. Das Plugin nimmt nur ein `package` vom Host von RankSphere an.
+- Quelle in RankSphere: die GitHub-Releases dieses Repos (`ranksphere.zip` + `ranksphere.json`, siehe Release-Workflow).
+
 ## Versionierung
 
 Neue Felder sind abwärtskompatibel; Brüche nur mit `ranksphere/v2`. RankSphere liest die Plugin-Version aus

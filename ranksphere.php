@@ -3,7 +3,7 @@
  * Plugin Name:       RankSphere
  * Plugin URI:        https://ranksphere.cloud
  * Description:       Connects the site to RankSphere: drafts written in RankSphere arrive as WordPress drafts, SEO titles and descriptions stay in sync with the active SEO plugin, and the RankSphere overview appears in the admin.
- * Version:           0.1.0
+ * Version:           1.0.0-alpha.1
  * Requires at least: 6.6
  * Requires PHP:      8.1
  * Author:            RankSphere
@@ -11,6 +11,7 @@
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       ranksphere
+ * Update URI:        https://ranksphere.cloud/wordpress/plugin
  *
  * @package RankSphere
  */
@@ -21,7 +22,7 @@ namespace RankSphere;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION     = '0.1.0';
+const VERSION     = '1.0.0-alpha.1';
 const PLUGIN_FILE = __FILE__;
 
 // Composer's autoloader – built into the release zip, nothing is loaded from outside the plugin.

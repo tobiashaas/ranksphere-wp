@@ -14,6 +14,8 @@ use RankSphere\Connection\ConnectionStore;
 use RankSphere\Connection\Disconnector;
 use RankSphere\Seo\SeoPlugins;
 use RankSphere\Support\App;
+use RankSphere\Updates\Channel;
+use RankSphere\Updates\Updater;
 
 /**
  * "RankSphere" in the admin menu: connect, see the connection, disconnect. The overview from
@@ -29,6 +31,9 @@ final class SettingsPage {
 	/** The admin-post action (and nonce action) that disconnects. */
 	public const DISCONNECT_ACTION = 'ranksphere_disconnect';
 
+	/** The admin-post action (and nonce action) that changes the update channel. */
+	public const CHANNEL_ACTION = 'ranksphere_update_channel';
+
 	/**
 	 * Takes the connection store.
 	 *
@@ -42,6 +47,7 @@ final class SettingsPage {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_post_' . self::DISCONNECT_ACTION, array( $this, 'handle_disconnect' ) );
+		add_action( 'admin_post_' . self::CHANNEL_ACTION, array( $this, 'handle_channel' ) );
 	}
 
 	/**
@@ -76,6 +82,23 @@ final class SettingsPage {
 	}
 
 	/**
+	 * "Update channel" (admin-post.php): nonce and capability, then back to the page.
+	 */
+	public function handle_channel(): void {
+		if ( ! current_user_can( 'update_plugins' ) || ! is_readable( dirname( __DIR__ ) . '/Updates/Updater.php' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage RankSphere.', 'ranksphere' ), '', array( 'response' => 403 ) );
+		}
+
+		check_admin_referer( self::CHANNEL_ACTION );
+
+		$channel = isset( $_POST['channel'] ) && is_string( $_POST['channel'] ) ? sanitize_key( wp_unslash( $_POST['channel'] ) ) : '';
+		Updater::set_channel( $channel );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=' . self::SLUG ) );
+		exit;
+	}
+
+	/**
 	 * Renders the page.
 	 */
 	public function render(): void {
@@ -92,6 +115,10 @@ final class SettingsPage {
 				$this->render_not_connected();
 			} else {
 				$this->render_connected( $connection );
+			}
+
+			if ( is_readable( dirname( __DIR__ ) . '/Updates/Updater.php' ) && current_user_can( 'update_plugins' ) ) {
+				$this->render_updates();
 			}
 			?>
 		</div>
@@ -161,6 +188,45 @@ final class SettingsPage {
 			<?php wp_nonce_field( self::DISCONNECT_ACTION ); ?>
 			<p><?php esc_html_e( 'Disconnecting removes the application password RankSphere uses. Drafts and changes already made stay as they are.', 'ranksphere' ); ?></p>
 			<?php submit_button( __( 'Disconnect', 'ranksphere' ), 'secondary', 'submit', false ); ?>
+		</form>
+		<?php
+	}
+
+	/**
+	 * The release channel (builds from RankSphere only).
+	 */
+	private function render_updates(): void {
+		$labels  = array(
+			Channel::STABLE => __( 'Stable releases only', 'ranksphere' ),
+			Channel::RC     => __( 'Release candidates and stable releases', 'ranksphere' ),
+			Channel::BETA   => __( 'Beta versions and newer', 'ranksphere' ),
+			Channel::ALPHA  => __( 'Alpha versions and newer (earliest tests, may break things)', 'ranksphere' ),
+		);
+		$current = Updater::channel();
+		?>
+		<h2><?php esc_html_e( 'Updates', 'ranksphere' ); ?></h2>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="<?php echo esc_attr( self::CHANNEL_ACTION ); ?>">
+			<?php wp_nonce_field( self::CHANNEL_ACTION ); ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="ranksphere-channel"><?php esc_html_e( 'Update channel', 'ranksphere' ); ?></label></th>
+					<td>
+						<select id="ranksphere-channel" name="channel">
+							<?php foreach ( $labels as $channel => $label ) : ?>
+								<option value="<?php echo esc_attr( $channel ); ?>" <?php selected( $current, $channel ); ?>><?php echo esc_html( $label ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">
+							<?php
+							/* translators: %s: installed plugin version. */
+							echo esc_html( sprintf( __( 'Installed: %s. New versions appear under Plugins like any other update.', 'ranksphere' ), \RankSphere\VERSION ) );
+							?>
+						</p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button( __( 'Save', 'ranksphere' ), 'secondary', 'submit', false ); ?>
 		</form>
 		<?php
 	}
