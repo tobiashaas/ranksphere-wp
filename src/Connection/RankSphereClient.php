@@ -39,6 +39,55 @@ final class RankSphereClient {
 	}
 
 	/**
+	 * A signed GET that expects a JSON object back.
+	 *
+	 * @param string                $endpoint Path below the API URL, with a leading slash.
+	 * @param array<string, string> $query    Query parameters (signed with the path).
+	 *
+	 * @return array<mixed>|\WP_Error
+	 */
+	public function get( string $endpoint, array $query = array() ): array|\WP_Error {
+		$url  = $this->connection->api_url . $endpoint;
+		$now  = time();
+		$path = wp_parse_url( $url, PHP_URL_PATH );
+		$path = is_string( $path ) ? $path : '/';
+
+		try {
+			$signature = ( new Signature( $this->connection->secret ) )->sign( $now, 'GET', Signature::canonical_path( $path, $query ), '' );
+		} catch ( \InvalidArgumentException $e ) {
+			return new \WP_Error( 'ranksphere_bad_secret', $e->getMessage() );
+		}
+
+		$response = wp_safe_remote_get(
+			array() === $query ? $url : $url . '?' . http_build_query( $query, '', '&', PHP_QUERY_RFC3986 ),
+			array(
+				'timeout'     => 8,
+				'redirection' => 0,
+				'user-agent'  => 'RankSphere-WordPress/' . VERSION,
+				'headers'     => array(
+					'Authorization'                   => 'Bearer ' . $this->connection->site_token,
+					'Accept'                          => 'application/json',
+					RequestVerifier::HEADER_TIMESTAMP => (string) $now,
+					RequestVerifier::HEADER_SIGNATURE => $signature,
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( 200 !== $status || ! is_array( $data ) ) {
+			return new \WP_Error( 'ranksphere_http_' . $status, 'RankSphere answered with status ' . $status . '.', array( 'status' => $status ) );
+		}
+
+		return $data;
+	}
+
+	/**
 	 * A signed POST.
 	 *
 	 * @param string               $endpoint Path below the API URL, with a leading slash.

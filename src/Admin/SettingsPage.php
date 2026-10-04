@@ -18,12 +18,12 @@ use RankSphere\Updates\Channel;
 use RankSphere\Updates\Updater;
 
 /**
- * "RankSphere" in the admin menu: connect, see the connection, disconnect. The overview from
- * RankSphere (tasks, voice, drafts) follows in M4.
+ * RankSphere → Settings (administrators): connect, see the connection, disconnect, update channel.
+ * The overview for everyone who writes is OverviewPage.
  */
 final class SettingsPage {
 
-	public const SLUG = 'ranksphere';
+	public const SLUG = 'ranksphere-settings';
 
 	/** Only administrators connect the site or see its data. */
 	public const CAPABILITY = 'manage_options';
@@ -51,17 +51,16 @@ final class SettingsPage {
 	}
 
 	/**
-	 * Adds the top-level menu entry.
+	 * Adds the entry below "RankSphere".
 	 */
 	public function add_menu(): void {
-		add_menu_page(
-			__( 'RankSphere', 'ranksphere' ),
-			__( 'RankSphere', 'ranksphere' ),
+		add_submenu_page(
+			OverviewPage::SLUG,
+			__( 'RankSphere settings', 'ranksphere' ),
+			__( 'Settings', 'ranksphere' ),
 			self::CAPABILITY,
 			self::SLUG,
-			array( $this, 'render' ),
-			'dashicons-chart-area',
-			81
+			array( $this, 'render' )
 		);
 	}
 
@@ -109,7 +108,7 @@ final class SettingsPage {
 		$connection = $this->store->get();
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'RankSphere', 'ranksphere' ); ?></h1>
+			<h1><?php esc_html_e( 'RankSphere settings', 'ranksphere' ); ?></h1>
 			<?php
 			if ( null === $connection ) {
 				$this->render_not_connected();

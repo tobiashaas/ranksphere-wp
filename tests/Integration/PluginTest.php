@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace RankSphere\Tests\Integration;
 
+use RankSphere\Admin\OverviewPage;
+use RankSphere\Plugin;
 use RankSphere\Admin\SettingsPage;
 use RankSphere\Lifecycle\Deactivator;
 use RankSphere\Lifecycle\Upgrader;
@@ -34,6 +36,7 @@ final class PluginTest extends WP_UnitTestCase {
 		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		self::assertIsInt( $admin );
 		wp_set_current_user( $admin );
+		( new OverviewPage() )->add_menu();
 		( new SettingsPage() )->add_menu();
 		self::assertStringContainsString( 'page=' . SettingsPage::SLUG, menu_page_url( SettingsPage::SLUG, false ) );
 
@@ -47,6 +50,22 @@ final class PluginTest extends WP_UnitTestCase {
 
 		$this->expectException( \WPDieException::class );
 		( new SettingsPage() )->render();
+	}
+
+	public function test_german_admins_get_the_bundled_translation(): void {
+		// de_DE_formal has no file of its own: the German one is used.
+		$locale = static fn (): string => 'de_DE_formal';
+		add_filter( 'determine_locale', $locale );
+
+		Plugin::load_translations();
+
+		self::assertSame( 'Übersicht', __( 'Overview', 'ranksphere' ) );
+		/* translators: %d: number of steps. */
+		self::assertSame( '3 weitere Schritte in RankSphere', sprintf( _n( '%d more step in RankSphere', '%d more steps in RankSphere', 3, 'ranksphere' ), 3 ) );
+
+		remove_filter( 'determine_locale', $locale );
+		unload_textdomain( 'ranksphere' );
+		self::assertSame( 'Overview', __( 'Overview', 'ranksphere' ) );
 	}
 
 	public function test_deactivation_stops_scheduled_work(): void {

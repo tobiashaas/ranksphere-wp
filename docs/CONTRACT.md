@@ -1,6 +1,6 @@
 # Schnittstelle RankSphere ↔ WordPress
 
-Version 1 (`ranksphere/v1`). M1–M3 (Verbinden, SEO-Felder, Entwürfe) umgesetzt, der Rest Entwurf für M4–M5; Änderungen hier zuerst, dann in beiden Repos.
+Version 1 (`ranksphere/v1`). M1–M4 (Verbinden, SEO-Felder, Entwürfe, Übersicht) umgesetzt, der Rest Entwurf für M5; Änderungen hier zuerst, dann in beiden Repos.
 
 ## Sicherheit (gilt für alle Aufrufe)
 
@@ -118,18 +118,49 @@ Recht `edit_post` für diesen Beitrag. `GET` liefert die Felder dieses Beitrags 
 - **Platzhalter-Sperre:** Enthält ein Entwurf von RankSphere noch `[[…]]` (fehlende Angaben), setzt das Plugin
   „Veröffentlichen“/„Planen“ zurück auf Entwurf und erklärt das im Editor. Kategorien/Schlagwörter folgen.
 
-### `GET /overview` (M4, für die eigene Admin-Oberfläche)
+### `GET /page-insights?post_id=…` (M4, nur für eingeloggte Benutzer – nicht für RankSphere)
 
-Nur für eingeloggte Benutzer mit `edit_posts` (Cookie + REST-Nonce), Daten aus dem 10-Minuten-Cache.
+Füllt die RankSphere-Box im Editor: Cookie + REST-Nonce, Recht `edit_post` für genau diesen Beitrag. Antwort
+`{ "html": "…" }`, auf dem Server gerendert und escaped (`Admin\PageBox`). Veröffentlicht → Daten aus RankSphere
+`GET /pages?url=<permalink>`; Entwurf → nur der Link zum Text in RankSphere (`_ranksphere_draft_id`).
+Die Übersichtsseite und das Dashboard-Widget rendert der Server direkt, ohne eigene Route.
 
 ## Routen in RankSphere
 
 | Route | Zweck |
 |---|---|
-| `GET /overview` | Kennzahlen, Datenstand, Aufgaben (Top 5), Texte, Tonalität |
-| `GET /pages?url=…` | Daten zu einer Seite für das Editor-Panel: Suchanfragen, Position, Vorschläge für Titel/Beschreibung |
+| `GET /overview?lang=de_DE` | Übersicht für den Admin (M4), Sätze in der Sprache des WordPress-Benutzers |
+| `GET /pages?url=…&lang=…` | Daten zu einer Seite für die Box im Editor (M4); nur Adressen der verbundenen Website, sonst `422` |
 | `POST /crawler-visits` | `{ "day": "2026-10-04", "visits": [ { "bot": "GPTBot", "path": "/", "hits": 12 } ] }` (M5) |
 | `POST /disconnect` | die Website hat die Verbindung getrennt: `{ "reason": "admin" \| "revoked" \| "user_deleted" }` (M1) |
+
+GETs werden wie POSTs signiert (Pfad + sortierte Query, leerer Body). Das Plugin hält jede Antwort 10 Minuten im
+Transient (je Sprache und Projekt), eine fehlgeschlagene 2 Minuten.
+
+`GET /overview` →
+
+```json
+{ "project": { "name": "…", "url": "https://ranksphere.cloud/projects/…" },
+  "period": { "from": "2026-09-04", "to": "2026-10-01", "days": 28 },
+  "verdict": { "tone": "good|watch|act|neutral", "label": "…", "text": "…" },
+  "search": { "clicks": 1234, "impressions": 40210, "position": 8.4,
+              "previous": { "clicks": 1122, "impressions": 41000, "position": 9.1 } | null, "url": "…" } | null,
+  "ai": { "mention_rate": 0.25, "citation_rate": 0.1, "measured_at": "…", "url": "…" } | null,
+  "data_problems": ["…"],
+  "tasks": [ { "title": "…", "why": "…", "area": "…", "impact": "high|medium|low", "state": "open|not_fixed", "url": "…" } ],
+  "tasks_total": 7,
+  "texts": [ { "title": "…", "type": "…", "state": "…", "open_questions": 2, "wordpress_post_id": 42 | null, "url": "…" } ],
+  "texts_url": "…",
+  "voice": { "address": "Sie", "voice": "…", "do": [], "dont": [], "preferred_terms": [], "taboo_words": [] } | null,
+  "voice_url": "…" }
+```
+
+`GET /pages` → `{ "path", "period", "search": { clicks, previous_clicks, impressions, previous_impressions, position,
+previous_position } | null, "queries": [ { query, clicks, impressions, position } ], "analytics", "website_check":
+[ { code, severity: error|warning|notice, title, fix } ] | null, "broken_backlinks": 2, "url" }`.
+
+`previous` ist `null`, wenn der Zeitraum davor kein fairer Vergleich ist (neues Projekt, Datenlücken) – dann zeigt das
+Plugin keine Veränderung. Aufgaben ohne Einrichtungsschritte (die sind für RankSphere, nicht für WordPress).
 
 ## Plugin-Updates (Builds von ranksphere.cloud, nicht WordPress.org)
 

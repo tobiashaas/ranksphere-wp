@@ -37,7 +37,9 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
 - `declare(strict_types=1)`, Namespace `RankSphere\` (PSR-4 in `src/`), Präfix `ranksphere` für alles Globale
   (Optionen, Hooks, Transients, Cron, Handles). Optionen nur über `Support\Options`, damit `uninstall.php` sie findet.
 - Quelltexte der Oberfläche auf **Englisch** mit Text-Domain `ranksphere` (WordPress-Konvention, übersetzt wird über
-  translate.wordpress.org); Deutsch kommt als Übersetzung.
+  translate.wordpress.org); Deutsch liegt bis dahin in `languages/ranksphere-de_DE.l10n.php` (Du-Form wie WordPress'
+  Deutsch). Jeder neue Text braucht dort seine Übersetzung – `tests/Unit/TranslationsTest.php` schlägt sonst fehl.
+- Daten von RankSphere sind fremde Daten: nur über `Insights\Value` lesen (Typ geprüft), escaped ausgeben, Links nur https.
 - Sicherheit (immer): Eingaben früh säubern, Ausgaben spät escapen, Nonce **und** Rechteprüfung, REST-Routen nie
   ohne `permission_callback`, SQL nur mit `$wpdb->prepare()`. Anfragen von RankSphere zusätzlich per HMAC –
   jede neue Route prüft im `permission_callback` über `Security\RequestVerifier` (Signatur, einmalig, genau das

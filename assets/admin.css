@@ -1,0 +1,242 @@
+/* RankSphere in the WordPress admin: overview page, dashboard widget, box on the edit screen. */
+
+.ranksphere {
+	--ranksphere-blue: #2563eb;
+	--ranksphere-good: #15803d;
+	--ranksphere-bad: #b91c1c;
+	--ranksphere-watch: #b45309;
+	--ranksphere-muted: #646970;
+	--ranksphere-line: #dcdcde;
+}
+
+.ranksphere-muted {
+	color: var(--ranksphere-muted);
+}
+
+.ranksphere-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+	align-items: flex-start;
+	justify-content: space-between;
+	margin: 12px 0 16px;
+}
+
+.ranksphere-project {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.ranksphere-verdict {
+	margin: 4px 0 0;
+	padding-left: 10px;
+	border-left: 3px solid var(--ranksphere-line);
+}
+
+.ranksphere-tone-good {
+	border-color: var(--ranksphere-good);
+}
+
+.ranksphere-tone-watch {
+	border-color: var(--ranksphere-watch);
+}
+
+.ranksphere-tone-act {
+	border-color: var(--ranksphere-bad);
+}
+
+.ranksphere-figures {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 12px;
+	margin: 0 0 8px;
+}
+
+.ranksphere-figure,
+.ranksphere-card {
+	background: #fff;
+	border: 1px solid var(--ranksphere-line);
+	border-radius: 6px;
+	padding: 12px 14px;
+}
+
+.ranksphere-figure {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.ranksphere-widget .ranksphere-figures {
+	grid-template-columns: repeat(2, 1fr);
+}
+
+.ranksphere-widget .ranksphere-figure {
+	padding: 8px 10px;
+}
+
+.ranksphere-figure-label {
+	color: var(--ranksphere-muted);
+	font-size: 12px;
+}
+
+.ranksphere-figure-value {
+	font-size: 22px;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.ranksphere-figure-change {
+	font-size: 12px;
+}
+
+.ranksphere-figure-change.is-up {
+	color: var(--ranksphere-good);
+}
+
+.ranksphere-figure-change.is-down {
+	color: var(--ranksphere-bad);
+}
+
+.ranksphere-figure-link {
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.ranksphere-columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: 16px;
+	margin: 16px 0;
+}
+
+.ranksphere-card h2 {
+	margin-top: 0;
+	font-size: 14px;
+}
+
+.ranksphere-tasks {
+	margin-left: 18px;
+}
+
+.ranksphere-tasks li {
+	margin-bottom: 10px;
+}
+
+.ranksphere-tasks .ranksphere-muted {
+	display: block;
+}
+
+.ranksphere-pill {
+	display: inline-block;
+	margin-right: 6px;
+	padding: 0 6px;
+	border-radius: 9px;
+	background: #f0f0f1;
+	font-size: 11px;
+	line-height: 18px;
+}
+
+.ranksphere-impact-high {
+	background: #fde8e8;
+}
+
+.ranksphere-impact-medium {
+	background: #fef3c7;
+}
+
+.ranksphere-texts .ranksphere-actions {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.ranksphere-voice {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 0 24px;
+}
+
+.ranksphere-voice h3 {
+	margin: 8px 0 4px;
+	font-size: 13px;
+}
+
+.ranksphere-voice ul {
+	margin: 0 0 0 18px;
+	list-style: disc;
+}
+
+.ranksphere-footer {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.ranksphere-page-box h4 {
+	margin: 12px 0 4px;
+}
+
+.ranksphere-facts {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.ranksphere-facts th {
+	font-weight: 400;
+	text-align: left;
+	color: var(--ranksphere-muted);
+	padding: 2px 0;
+}
+
+.ranksphere-facts td {
+	text-align: right;
+	padding: 2px 0;
+}
+
+.ranksphere-queries,
+.ranksphere-findings {
+	margin: 0;
+}
+
+.ranksphere-queries li {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.ranksphere-findings li {
+	padding-left: 12px;
+	position: relative;
+}
+
+.ranksphere-findings li::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 7px;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--ranksphere-watch);
+}
+
+.ranksphere-findings .ranksphere-severity-error::before,
+.ranksphere-findings .ranksphere-severity-critical::before {
+	background: var(--ranksphere-bad);
+}
+
+.ranksphere-findings .ranksphere-severity-notice::before {
+	background: var(--ranksphere-muted);
+}
+
+.ranksphere-widget .ranksphere-figure-value {
+	font-size: 18px;
+}
+
+.ranksphere-widget .ranksphere-verdict {
+	margin: 0 0 10px;
+}
+
+.ranksphere-next {
+	margin: 12px 0 8px;
+}

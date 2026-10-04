@@ -4,7 +4,7 @@ Tags: seo, content, ai visibility, drafts, search console
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0-alpha.3
+Stable tag: 1.0.0-alpha.4
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,11 +16,11 @@ RankSphere analyses how a website is found in Google and in AI assistants such a
 
 * Texts written in RankSphere arrive as **drafts** – nothing is ever published automatically.
 * SEO title, meta description and focus keyword are written to the SEO plugin you use (Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework, Slim SEO) – or by the plugin itself when you use none.
-* The RankSphere overview of the project appears in the WordPress admin.
+* The RankSphere overview of the project appears in the WordPress admin, and every published page shows its Google figures and searches on the edit screen.
 
 = External service =
 
-This plugin is an interface to RankSphere (https://ranksphere.cloud), a service operated by the plugin's author. It sends nothing until an administrator connects the site under "RankSphere" in the admin and approves the connection. Once connected, RankSphere sends drafts and SEO fields to the site, and the site sends the data needed for the overview back to RankSphere. When the connection ends in WordPress (you disconnect, the application password is revoked or the approving user is deleted), the site tells RankSphere so it stops using it; that message contains only the reason.
+This plugin is an interface to RankSphere (https://ranksphere.cloud), a service operated by the plugin's author. It sends nothing until an administrator connects the site under "RankSphere" in the admin and approves the connection. Once connected, RankSphere sends drafts and SEO fields to the site. To show the overview, the dashboard widget and the box on the edit screen, the site asks RankSphere for the project's figures – with the language of the logged-in user and, for the box, the address of the page being edited; answers are kept for ten minutes. When the connection ends in WordPress (you disconnect, the application password is revoked or the approving user is deleted), the site tells RankSphere so it stops using it; that message contains only the reason.
 
 Builds downloaded from ranksphere.cloud (not from WordPress.org) check ranksphere.cloud for updates, at most every six hours. The request contains the installed plugin version and the chosen release channel – not the site's address.
 
@@ -47,6 +47,13 @@ No. Texts arrive as drafts. Publishing is always done by a person in WordPress.
 Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework and Slim SEO. Without an SEO plugin, RankSphere outputs title and description itself.
 
 == Changelog ==
+
+= 1.0.0-alpha.4 =
+* New: RankSphere → Overview for everyone who writes – figures from Google and AI answers, the most important next steps, the texts from RankSphere (with a link to their drafts) and how your company writes.
+* New: a RankSphere box on the edit screen of every published page – clicks, impressions, position, the searches it is found with, findings of the website check and dead backlinks. Works in the block editor, the classic editor and with page builders.
+* New: dashboard widget with the figures and the next step.
+* Connection and update channel moved to RankSphere → Settings.
+* German translation included.
 
 = 1.0.0-alpha.3 =
 * Fixed: switching to a build without the updater (the WordPress.org variant) ended the update with a critical error.
