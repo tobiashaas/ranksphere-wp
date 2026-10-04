@@ -1,0 +1,15 @@
+# WordPress stubs come with szepeviktor/phpstan-wordpress (extension installer).
+parameters:
+	level: max
+	paths:
+		- ranksphere.php
+		- uninstall.php
+		- src/
+		- tests/
+	excludePaths:
+		- vendor/
+	bootstrapFiles:
+		- tests/phpstan-bootstrap.php
+	scanFiles:
+		- vendor/php-stubs/wordpress-tests-stubs/wordpress-tests-stubs.php
+	treatPhpDocTypesAsCertain: false

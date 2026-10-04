@@ -1,0 +1,6 @@
+/vendor/
+/node_modules/
+/build/
+.phpunit.result.cache
+.wp-env.override.json
+*.zip

@@ -1,0 +1,27 @@
+# Not part of the release zip (also read by the WordPress.org deploy action).
+/.git
+/.github
+/.claude
+/.wordpress-org
+/bin
+/docs
+/node_modules
+/tests
+/build
+.distignore
+.editorconfig
+.gitattributes
+.gitignore
+.wp-env.json
+.wp-env.override.json
+.phpunit.result.cache
+AGENTS.md
+CLAUDE.md
+README.md
+composer.lock
+package.json
+package-lock.json
+phpcs.xml.dist
+phpstan.neon.dist
+phpunit.xml.dist
+phpunit-unit.xml.dist

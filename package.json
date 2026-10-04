@@ -1,0 +1,18 @@
+{
+	"name": "ranksphere-wp",
+	"private": true,
+	"description": "Development tooling for the RankSphere WordPress plugin.",
+	"license": "GPL-2.0-or-later",
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"env:start": "wp-env start",
+		"env:stop": "wp-env stop",
+		"test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/$(basename \"$PWD\") vendor/bin/phpunit -c phpunit.xml.dist",
+		"plugin-zip": "bash bin/build-zip.sh"
+	},
+	"devDependencies": {
+		"@wordpress/env": "^10.0.0"
+	}
+}
