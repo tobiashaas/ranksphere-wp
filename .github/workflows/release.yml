@@ -1,12 +1,14 @@
 name: Release
 
-# A tag v<version> (v1.0.0-alpha.1, v1.0.0-beta.1, v1.0.0-rc.1, v1.0.0) builds the plugin and
-# publishes a GitHub release. Versions with a suffix are pre-releases. RankSphere reads the
-# releases and offers them to sites by channel (GET /api/wordpress/v1/plugin).
+# Publishes the version in ranksphere.php as a GitHub release: either "Run workflow" on main (the
+# workflow creates the tag v<version>) or pushing that tag. Versions with a suffix
+# (1.0.0-alpha.1, -beta.1, -rc.1) are pre-releases. RankSphere reads the releases and offers them to
+# sites by channel (GET /api/wordpress/v1/plugin).
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,10 +30,19 @@ jobs:
       - run: composer install --no-interaction --no-progress
       - name: Checks (lint, static analysis, unit tests)
         run: composer check
-      - name: Tag matches the plugin version
+      - name: Version and tag
         run: |
           version="$(php bin/release-meta.php | php -r 'echo json_decode(stream_get_contents(STDIN))->version;')"
-          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+              echo "Releases are made from main." >&2
+              exit 1
+            fi
+            if git ls-remote --exit-code --tags origin "refs/tags/v${version}" >/dev/null; then
+              echo "v${version} exists already – raise the version first." >&2
+              exit 1
+            fi
+          elif [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
             echo "Tag ${GITHUB_REF_NAME} does not match plugin version ${version}." >&2
             exit 1
           fi
@@ -48,6 +59,7 @@ jobs:
         run: |
           flags=()
           if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
-          gh release create "$GITHUB_REF_NAME" \
+          # --target creates the tag on this commit when it does not exist yet (Run workflow).
+          gh release create "v${VERSION}" --target "$GITHUB_SHA" \
             build/ranksphere.zip build/ranksphere-wporg.zip build/ranksphere.json \
             --title "RankSphere ${VERSION}" --notes-file build/notes.md "${flags[@]}"
