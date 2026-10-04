@@ -14,6 +14,10 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
   (wp-env würde alle gleichzeitig aktivieren); lokal installiert sie `npm run env:seo-plugins`, geladen werden sie im
   Test über `RANKSPHERE_TEST_SEO_PLUGIN=<ordner/datei.php>`.
 - Unit-Tests (`tests/Unit`) sind reines PHP ohne WordPress; alles mit WordPress gehört nach `tests/Integration`.
+- Ohne wp-env (z. B. Docker Hub drosselt): WordPress + `wordpress-develop/tests/phpunit` herunterladen, MariaDB starten,
+  `wp-tests-config.php` in das Test-Verzeichnis legen und `WP_TESTS_DIR=<pfad> vendor/bin/phpunit -c phpunit.xml.dist`.
+- Anmeldung per Application Password simulieren Tests mit `$GLOBALS['wp_rest_application_password_uuid']`
+  (liest `rest_get_authenticated_app_password()`); ausgehende Anfragen fängt `pre_http_request` ab.
 - Mindestversionen: PHP 8.1, WordPress 6.6 – in Plugin-Header, `readme.txt`, `phpcs.xml.dist` (`testVersion`,
   `minimum_wp_version`) und CI-Matrix gleich halten. Version steht dreimal (Header, `VERSION`, `Stable tag`) –
   `composer check-versions` prüft das.
@@ -27,8 +31,9 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
 - Quelltexte der Oberfläche auf **Englisch** mit Text-Domain `ranksphere` (WordPress-Konvention, übersetzt wird über
   translate.wordpress.org); Deutsch kommt als Übersetzung.
 - Sicherheit (immer): Eingaben früh säubern, Ausgaben spät escapen, Nonce **und** Rechteprüfung, REST-Routen nie
-  ohne `permission_callback`, SQL nur mit `$wpdb->prepare()`. Anfragen von RankSphere zusätzlich per HMAC
-  (`Security\Signature`) – nie nur dem Application Password vertrauen.
+  ohne `permission_callback`, SQL nur mit `$wpdb->prepare()`. Anfragen von RankSphere zusätzlich per HMAC –
+  jede neue Route prüft im `permission_callback` über `Security\RequestVerifier` (Signatur, einmalig, genau das
+  freigegebene Application Password) und danach die Rechte des Benutzers. Nie nur dem Application Password vertrauen.
 - Nichts beim Laden der Datei ausführen; Hooks in `Plugin::boot()`, Admin-Code nur im Admin.
 - **Nie veröffentlichen:** Texte von RankSphere werden immer als Entwurf angelegt – serverseitig erzwungen.
 - **Keine Daten ohne Zustimmung** (Guideline 7): Vor dem Verbinden geht nichts an RankSphere; die Zählung der

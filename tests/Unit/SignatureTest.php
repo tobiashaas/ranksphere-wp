@@ -43,6 +43,36 @@ final class SignatureTest extends TestCase {
 		self::assertFalse( $signature->verify( $sent, 1_000_000, 'POST', '/x', '', 1_000_001 + Signature::TOLERANCE ) );
 	}
 
+	public function test_the_query_is_signed_in_sorted_order(): void {
+		self::assertSame( '/ranksphere/v1/status', Signature::canonical_path( '/ranksphere/v1/status', array() ) );
+		self::assertSame(
+			'/ranksphere/v1/status?a=1&b=x%20y',
+			Signature::canonical_path(
+				'/ranksphere/v1/status',
+				array(
+					'b' => 'x y',
+					'a' => '1',
+				)
+			)
+		);
+	}
+
+	/**
+	 * The same vector is in RankSphere's tests (WordPressSignatureTest) – both sides must agree.
+	 */
+	public function test_the_shared_test_vector(): void {
+		$signature = new Signature( self::SECRET );
+		$path      = Signature::canonical_path(
+			'/ranksphere/v1/status',
+			array(
+				'b' => 'x y',
+				'a' => '1',
+			)
+		);
+
+		self::assertSame( '1385b09a84e589be88f16929e87e77f4be98f4f4157112516b2495e6aed27be6', $signature->sign( 1_700_000_000, 'GET', $path, '' ) );
+	}
+
 	public function test_a_short_secret_is_refused(): void {
 		$this->expectException( \InvalidArgumentException::class );
 

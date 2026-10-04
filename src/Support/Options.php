@@ -20,12 +20,15 @@ final class Options {
 	/** The connection to RankSphere (project, endpoint, signing secret); empty when not connected. */
 	public const CONNECTION = 'ranksphere_connection';
 
+	/** Why and when the last connection ended, for the admin page. */
+	public const DISCONNECTED = 'ranksphere_disconnected';
+
 	/**
 	 * All options, for uninstall.
 	 *
 	 * @return list<string>
 	 */
 	public static function all(): array {
-		return array( self::VERSION, self::CONNECTION );
+		return array( self::VERSION, self::CONNECTION, self::DISCONNECTED );
 	}
 }

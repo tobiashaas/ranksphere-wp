@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace RankSphere;
 
 use RankSphere\Admin\SettingsPage;
+use RankSphere\Connection\Revocation;
 use RankSphere\Lifecycle\Upgrader;
+use RankSphere\Rest\ConnectionController;
 
 /**
  * Registers the plugin's hooks once WordPress has loaded all plugins. Nothing runs at file load
@@ -23,6 +25,9 @@ final class Plugin {
 	 */
 	public static function boot(): void {
 		Upgrader::maybe_upgrade();
+
+		( new ConnectionController() )->register();
+		( new Revocation() )->register();
 
 		if ( is_admin() ) {
 			( new SettingsPage() )->register();
