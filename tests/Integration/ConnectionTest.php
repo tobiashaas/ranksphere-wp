@@ -16,91 +16,13 @@ use RankSphere\Security\Signature;
 use RankSphere\Support\Options;
 use WP_Application_Passwords;
 use WP_REST_Request;
-use WP_REST_Response;
-use WP_REST_Server;
-use WP_UnitTestCase;
 
 use const RankSphere\VERSION;
 
 /**
  * Only RankSphere, with the approved application password and a fresh signature, gets in.
  */
-final class ConnectionTest extends WP_UnitTestCase {
-
-	private const SECRET = 'c2VjcmV0LXRoYXQtaXMtbG9uZy1lbm91Z2gtZm9yLWhtYWMtc2hhMjU2LTEyMzQ1Njc4';
-
-	private const TOKEN = 'site-token-0123456789abcdefghijklmnopqrstuvwxyz';
-
-	/**
-	 * The administrator who approves RankSphere.
-	 *
-	 * @var int
-	 */
-	private int $admin;
-
-	/**
-	 * Their application password for RankSphere.
-	 *
-	 * @var string
-	 */
-	private string $uuid;
-
-	/**
-	 * Requests RankSphere sent to its API, captured instead of sent.
-	 *
-	 * @var list<array{url: string, args: array<mixed>}>
-	 */
-	private array $outgoing = array();
-
-	public function set_up(): void {
-		parent::set_up();
-
-		// A fresh REST server per test, as WordPress' own REST tests do.
-		global $wp_rest_server;
-		$wp_rest_server = new WP_REST_Server(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- WordPress' global.
-		do_action( 'rest_api_init', $wp_rest_server ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress' hook.
-
-		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
-		self::assertIsInt( $admin );
-		$this->admin = $admin;
-		$this->uuid  = $this->approve( $admin );
-
-		add_filter(
-			'pre_http_request',
-			/**
-			 * Captures the request.
-			 *
-			 * @param false|array<string, mixed> $preempt Ignored.
-			 * @param array<string, mixed>       $args    Request arguments.
-			 * @param string                     $url     Address.
-			 */
-			function ( $preempt, array $args, string $url ): array {
-				$this->outgoing[] = array(
-					'url'  => $url,
-					'args' => $args,
-				);
-
-				return array(
-					'headers'  => array(),
-					'body'     => '{}',
-					'response' => array(
-						'code'    => 200,
-						'message' => 'OK',
-					),
-					'cookies'  => array(),
-					'filename' => null,
-				);
-			},
-			10,
-			3
-		);
-	}
-
-	public function tear_down(): void {
-		unset( $GLOBALS['wp_rest_application_password_uuid'] );
-		wp_set_current_user( 0 );
-		parent::tear_down();
-	}
+final class ConnectionTest extends RankSphereTestCase {
 
 	public function test_connecting_needs_an_application_password_of_an_administrator(): void {
 		wp_set_current_user( $this->admin );
@@ -301,106 +223,11 @@ final class ConnectionTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Creates an application password for the user and authenticates the request with it.
-	 *
-	 * @param int $user_id The user.
-	 */
-	private function approve( int $user_id ): string {
-		$created = WP_Application_Passwords::create_new_application_password( $user_id, array( 'name' => 'RankSphere' ) );
-		self::assertIsArray( $created );
-		$uuid = $created[1]['uuid'];
-		self::assertIsString( $uuid );
-
-		wp_set_current_user( $user_id );
-		$GLOBALS['wp_rest_application_password_uuid'] = $uuid; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- set by WordPress when an application password authenticates.
-
-		return $uuid;
-	}
-
-	/**
-	 * Back to the approved administrator's application password.
-	 */
-	private function authenticate(): void {
-		wp_set_current_user( $this->admin );
-		$GLOBALS['wp_rest_application_password_uuid'] = $this->uuid; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- set by WordPress when an application password authenticates.
-	}
-
-	/**
-	 * Connects the site as RankSphere does.
-	 */
-	private function connect(): void {
-		$this->authenticate();
-		self::assertSame( 201, $this->dispatch( $this->connect_request() )->get_status() );
-	}
-
-	/**
-	 * POST /connection with RankSphere's body.
-	 *
-	 * @param array<string, string> $overrides Changed fields.
-	 *
-	 * @return WP_REST_Request
-	 * @phpstan-return WP_REST_Request<array<string, mixed>>
-	 */
-	private function connect_request( array $overrides = array() ): WP_REST_Request {
-		$request = new WP_REST_Request( 'POST', '/ranksphere/v1/connection' );
-		$request->set_header( 'Content-Type', 'application/json' );
-		$request->set_body(
-			(string) wp_json_encode(
-				$overrides + array(
-					'project_id'   => 'muster',
-					'project_name' => 'Musterprojekt',
-					'project_url'  => 'https://ranksphere.test/projects/muster',
-					'api_url'      => 'https://ranksphere.test/api/wordpress/v1/',
-					'secret'       => self::SECRET,
-					'site_token'   => self::TOKEN,
-				)
-			)
-		);
-
-		return $request;
-	}
-
-	/**
-	 * Adds RankSphere's signature headers.
-	 *
-	 * @param WP_REST_Request $request   The request.
-	 * @param int|null        $timestamp Signing time, now by default.
-	 * @param string          $secret    Signing secret.
-	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
-	 *
-	 * @return WP_REST_Request
-	 * @phpstan-return WP_REST_Request<array<string, mixed>>
-	 */
-	private function sign( WP_REST_Request $request, ?int $timestamp = null, string $secret = self::SECRET ): WP_REST_Request {
-		$timestamp ??= time();
-		$query       = $request->get_query_params();
-		unset( $query['rest_route'] );
-
-		$request->set_header( RequestVerifier::HEADER_TIMESTAMP, (string) $timestamp );
-		$request->set_header(
-			RequestVerifier::HEADER_SIGNATURE,
-			( new Signature( $secret ) )->sign( $timestamp, $request->get_method(), Signature::canonical_path( $request->get_route(), $query ), (string) $request->get_body() )
-		);
-
-		return $request;
-	}
-
-	/**
 	 * The stored project name, null when not connected.
 	 */
 	private function project_name(): ?string {
 		$connection = ( new ConnectionStore() )->get();
 
 		return null !== $connection ? $connection->project_name : null;
-	}
-
-	/**
-	 * Runs the request through the REST server.
-	 *
-	 * @param WP_REST_Request $request The request.
-	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
-	 */
-	private function dispatch( WP_REST_Request $request ): WP_REST_Response {
-		return rest_get_server()->dispatch( $request );
 	}
 }

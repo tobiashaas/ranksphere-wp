@@ -7,10 +7,21 @@ Bei neuen Hauptversionen erneut prüfen; die Integrationstests laufen gegen die 
 
 ## Grundsatz
 
-Je Plugin ein Adapter mit derselben Schnittstelle (lesen roh + gerendert, schreiben Titel, Beschreibung,
-Fokus-Keyword(s), Canonical, noindex). **Wo das Plugin selbst eine Ability zum Schreiben anbietet, nehmen wir die**
-(`wp_get_ability( $name )->execute( $input )`, WordPress 6.9+) – das Plugin hält dann seine Caches und Tabellen
-selbst konsistent. Sonst schreiben wir in seinen Speicher und stoßen danach Index/Cache an.
+Je Plugin ein Adapter (`src/Seo/Adapters`) mit derselben Schnittstelle: Rohwerte lesen, Titel, Beschreibung,
+Fokus-Keyword(s), Canonical, noindex als Teil-Update schreiben. Umgesetzt (M2) über den **Speicher des Plugins mit
+seinen eigenen PHP-Methoden** und danach Index/Cache – das läuft ab WordPress 6.6 gleich und ist je Plugin
+integrationsgetestet. Die Abilities von SEOPress, AIOSEO und Slim SEO schreiben in dieselben Speicher; sie bleiben
+die Option für später, wenn wir WordPress 6.9 voraussetzen.
+
+| Plugin | Schreibweg im Adapter |
+|---|---|
+| Yoast | `WPSEO_Meta::set_value()`/`delete()`, danach `Indexable_Post_Watcher::build_indexable()` (Frontend-Titel getestet) |
+| Rank Math | Post-Meta, Robots-Array nur `index`/`noindex` anfassen, danach `Cache_Watcher::invalidate_post()` |
+| SEOPress | Post-Meta (dieselben Schlüssel wie seine Abilities); noindex nur `yes` oder entfernt |
+| AIOSEO | `Models\Post::savePost()` (Teil-Update seit 5.0; Robots-Schlüssel dort `default`/`noindex`), Frontend-Titel getestet |
+| TSF | `Data\Plugin\Post::update_single_meta_item()` je Feld |
+| Slim SEO | Array `slim_seo`, andere Schlüssel darin bleiben |
+| keins | eigene Meta `_ranksphere_*`, Ausgabe über `NativeOutput` (Titel, Beschreibung, Canonical, `wp_robots`) |
 
 Leere Werte heißen überall „Vorlage des Plugins verwenden“ – leer schreiben = löschen, nie einen gerenderten
 Wert (mit aufgelösten Variablen) zurückschreiben.

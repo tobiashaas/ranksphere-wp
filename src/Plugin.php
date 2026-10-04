@@ -12,7 +12,10 @@ namespace RankSphere;
 use RankSphere\Admin\SettingsPage;
 use RankSphere\Connection\Revocation;
 use RankSphere\Lifecycle\Upgrader;
+use RankSphere\Content\PlaceholderLock;
 use RankSphere\Rest\ConnectionController;
+use RankSphere\Rest\ContentController;
+use RankSphere\Seo\NativeOutput;
 
 /**
  * Registers the plugin's hooks once WordPress has loaded all plugins. Nothing runs at file load
@@ -27,7 +30,10 @@ final class Plugin {
 		Upgrader::maybe_upgrade();
 
 		( new ConnectionController() )->register();
+		( new ContentController() )->register();
 		( new Revocation() )->register();
+		( new PlaceholderLock() )->register();
+		( new NativeOutput() )->register();
 
 		// Builds from RankSphere update themselves; the WordPress.org build has no Updates directory.
 		if ( is_readable( __DIR__ . '/Updates/Updater.php' ) ) {

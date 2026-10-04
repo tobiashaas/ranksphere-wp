@@ -1,6 +1,6 @@
 # Schnittstelle RankSphere ↔ WordPress
 
-Version 1 (`ranksphere/v1`). M1 (Verbinden, Status, Trennen) umgesetzt, der Rest Entwurf für M2–M5; Änderungen hier zuerst, dann in beiden Repos.
+Version 1 (`ranksphere/v1`). M1–M3 (Verbinden, SEO-Felder, Entwürfe) umgesetzt, der Rest Entwurf für M4–M5; Änderungen hier zuerst, dann in beiden Repos.
 
 ## Sicherheit (gilt für alle Aufrufe)
 
@@ -69,30 +69,54 @@ Zugang mehr. Antwort: Status mit `connected: false`.
 Die Website trennt von sich aus, wenn ein Administrator in WordPress „Trennen“ klickt, das Application Password
 widerrufen oder der freigebende Benutzer gelöscht wird – und meldet das an `POST /disconnect` (siehe unten).
 
+### `GET /lookup?url=…` (M2)
+
+Welcher Beitrag zu einer Adresse der Website gehört (`url_to_postid()`, statische Startseite eingeschlossen). Recht
+`edit_posts`, und den Beitrag muss der Benutzer bearbeiten dürfen – sonst `404 ranksphere_not_found`.
+
+```json
+{ "post_id": 42, "post_type": "page", "status": "publish", "title": "Leistungen", "url": "https://…/leistungen/",
+  "edit_url": "https://…/wp-admin/post.php?post=42&action=edit", "preview_url": "…" }
+```
+
 ### `GET /posts/{id}/seo` · `PUT /posts/{id}/seo` (M2)
 
+Recht `edit_post` für diesen Beitrag. `GET` liefert die Felder dieses Beitrags (wie `/lookup`) plus:
+
 ```json
-{ "title": "…", "description": "…", "focus_keywords": ["…"], "canonical": null, "noindex": false }
+{ "seo_plugin": { "slug": "wordpress-seo", "name": "Yoast SEO", "version": "28.6" },
+  "supports": ["title", "description", "focus_keywords", "canonical", "noindex"],
+  "seo": { "title": "…", "description": "…", "focus_keywords": ["…"], "canonical": null, "noindex": null } }
 ```
 
-- `PUT` ist ein Teil-Update: nur gesendete Felder ändern sich; `null` = Vorlage des SEO-Plugins verwenden.
-- Antwort: `{ "before": {…}, "after": {…}, "rendered": { "title": "…", "description": "…" }, "history_id": 12 }`.
-- `POST /posts/{id}/seo/undo` mit `{ "history_id": 12 }` stellt den Stand davor wieder her.
-- Gilt für Beiträge, Seiten und öffentliche Beitragstypen; Terme und Startseite folgen.
+- Rohwerte, nie gerenderte (aufgelöste Variablen); `null` = Vorlage/Standard des SEO-Plugins. `seo_plugin` ist `null`
+  ohne SEO-Plugin – dann gibt das Plugin die Felder selbst aus. `supports` sagt, was das Plugin speichern kann
+  (TSF und Slim SEO frei: kein Fokus-Keyword).
+- `PUT` ist ein Teil-Update: nur gesendete Felder ändern sich, `null` stellt den Standard wieder her. Falscher Typ →
+  `400 ranksphere_invalid_seo`. Texte werden zu einer Zeile Klartext, `canonical` nur http(s), höchstens 10 Keywords.
+- Antwort: `{ "post_id": 42, "before": {…}, "after": {…}, "history_id": "<uuid>" | null, "unsupported": [] }` –
+  `history_id` ist `null`, wenn sich nichts geändert hat; `unsupported` nennt gesendete Felder, die das Plugin nicht kennt.
+- `POST /posts/{id}/seo/undo` mit `{ "history_id": "<uuid>" }` stellt den Stand davor wieder her (neuer Verlaufseintrag).
+  Schon zurückgenommen → `409 ranksphere_already_undone`; Feld seitdem anders → `409 ranksphere_changed_since`.
+- Verlauf je Beitrag in der Post-Meta `_ranksphere_seo_history` (die letzten 20 Änderungen).
+- Gilt für Beiträge, Seiten und öffentliche Beitragstypen; Terme und Startseiten-Optionen folgen.
 
-### `POST /drafts` · `PUT /drafts/{ranksphere_id}` (M3)
+### `POST /drafts` (M3)
 
 ```json
-{ "ranksphere_id": "draft_123", "post_type": "post", "title": "…", "slug": "…",
+{ "ranksphere_id": "text-123", "post_type": "page", "title": "…", "slug": "…",
   "content": "<!-- wp:heading -->…<!-- /wp:heading -->", "excerpt": "…",
-  "seo": { "title": "…", "description": "…", "focus_keywords": ["…"] },
-  "categories": [], "tags": [] }
+  "seo": { "title": "…", "description": "…", "focus_keywords": ["…"] } }
 ```
 
-- Status ist **immer** `draft`, egal was gesendet wird. Ein Entwurf mit derselben `ranksphere_id` wird aktualisiert,
-  solange er noch Entwurf ist; ist er veröffentlicht → `409 ranksphere_already_published`.
-- Inhalt wird mit `parse_blocks()` geprüft und mit `wp_kses_post()` gefiltert.
-- Antwort: `{ "post_id": 42, "edit_url": "https://…/wp-admin/post.php?post=42&action=edit", "preview_url": "…" }`.
+- Recht `edit_posts` und `create_posts` des Beitragstyps (nur öffentliche Typen, keine Anhänge) – sonst `400`.
+- Status ist **immer** `draft`, egal was gesendet wird. Ein Entwurf mit derselben `ranksphere_id` (Post-Meta
+  `_ranksphere_draft_id`) wird aktualisiert, solange er Entwurf/ausstehend ist; ist er veröffentlicht →
+  `409 ranksphere_already_published` (mit `data.post_id`).
+- Inhalt (Block-Markup) mit `wp_kses_post()` gefiltert. SEO-Felder wie bei `PUT /posts/{id}/seo`.
+- Antwort `201` (neu) bzw. `200` (aktualisiert): Felder wie `/lookup` plus `"created": true|false`.
+- **Platzhalter-Sperre:** Enthält ein Entwurf von RankSphere noch `[[…]]` (fehlende Angaben), setzt das Plugin
+  „Veröffentlichen“/„Planen“ zurück auf Entwurf und erklärt das im Editor. Kategorien/Schlagwörter folgen.
 
 ### `GET /overview` (M4, für die eigene Admin-Oberfläche)
 
