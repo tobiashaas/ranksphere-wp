@@ -92,12 +92,11 @@ final class Drafts {
 	public function find( string $ranksphere_id ): ?\WP_Post {
 		$posts = get_posts(
 			array(
-				'post_type'        => 'any',
-				'post_status'      => 'any',
-				'meta_key'         => self::META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one lookup per request.
-				'meta_value'       => $ranksphere_id, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- one lookup per request.
-				'numberposts'      => 1,
-				'suppress_filters' => true,
+				'post_type'   => 'any',
+				'post_status' => 'any',
+				'meta_key'    => self::META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one lookup per request.
+				'meta_value'  => $ranksphere_id, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- one lookup per request.
+				'numberposts' => 1,
 			)
 		);
 
