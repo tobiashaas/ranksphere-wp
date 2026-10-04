@@ -14,6 +14,6 @@
 		"env:seo-plugins": "for p in wordpress-seo seo-by-rank-math wp-seopress all-in-one-seo-pack autodescription slim-seo; do wp-env run cli wp plugin install $p --force; wp-env run tests-cli wp plugin install $p --force; done"
 	},
 	"devDependencies": {
-		"@wordpress/env": "^10.0.0"
+		"@wordpress/env": "^11.16.0"
 	}
 }

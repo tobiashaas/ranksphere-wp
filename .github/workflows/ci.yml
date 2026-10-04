@@ -17,7 +17,7 @@ jobs:
     name: Lint & static analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
@@ -36,7 +36,7 @@ jobs:
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -75,13 +75,13 @@ jobs:
           - wp: '6.6'
             seo: { name: 'Slim SEO', slug: 'slim-seo', file: 'slim-seo/slim-seo.php' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
           coverage: none
       - run: composer install --no-interaction --no-progress
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -100,7 +100,7 @@ jobs:
     name: Plugin Check (WordPress.org)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
@@ -118,14 +118,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [static, unit]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
           coverage: none
       - run: bash bin/build-zip.sh --wporg
       - run: bash bin/build-zip.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ranksphere-zip
           path: |
