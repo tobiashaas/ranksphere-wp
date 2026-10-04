@@ -3,7 +3,8 @@ name: Release
 # Publishes the version in ranksphere.php as a GitHub release: either "Run workflow" on main (the
 # workflow creates the tag v<version>) or pushing that tag. Versions with a suffix
 # (1.0.0-alpha.1, -beta.1, -rc.1) are pre-releases. RankSphere reads the releases and offers them to
-# sites by channel (GET /api/wordpress/v1/plugin).
+# sites by channel (GET /api/wordpress/v1/plugin). Only the self-updating build is attached: the
+# WordPress.org build (no updater) is for the submission there and would cut a site off from updates.
 
 on:
   push:
@@ -49,7 +50,6 @@ jobs:
           echo "VERSION=${version}" >> "$GITHUB_ENV"
       - name: Build
         run: |
-          bash bin/build-zip.sh --wporg
           bash bin/build-zip.sh
           php bin/release-meta.php > build/ranksphere.json
           php bin/release-notes.php "$VERSION" > build/notes.md
@@ -61,5 +61,5 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
           # --target creates the tag on this commit when it does not exist yet (Run workflow).
           gh release create "v${VERSION}" --target "$GITHUB_SHA" \
-            build/ranksphere.zip build/ranksphere-wporg.zip build/ranksphere.json \
+            build/ranksphere.zip build/ranksphere.json \
             --title "RankSphere ${VERSION}" --notes-file build/notes.md "${flags[@]}"
