@@ -62,4 +62,4 @@ jobs:
           # --target creates the tag on this commit when it does not exist yet (Run workflow).
           gh release create "v${VERSION}" --target "$GITHUB_SHA" \
             build/ranksphere.zip build/ranksphere.json \
-            --title "RankSphere ${VERSION}" --notes-file build/notes.md "${flags[@]}"
+            --title "${VERSION}" --notes-file build/notes.md "${flags[@]}"

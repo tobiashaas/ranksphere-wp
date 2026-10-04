@@ -18,6 +18,9 @@ $ranksphere_cleanup = static function (): void {
 	foreach ( RankSphere\Support\Options::all() as $ranksphere_option ) {
 		delete_option( $ranksphere_option );
 	}
+
+	// Cached data from RankSphere; the per-page caches expire on their own within ten minutes.
+	delete_transient( RankSphere\Insights\Insights::OVERVIEW_CACHE );
 };
 
 if ( is_multisite() ) {

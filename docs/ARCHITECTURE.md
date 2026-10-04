@@ -36,7 +36,8 @@ src/
   Content/                Entwürfe anlegen/aktualisieren, Platzhalter-Sperre
   History/                Änderungsprotokoll + Rückgängig
   Crawlers/               Zählung der KI-Crawler (eigene Tabelle, täglich an RankSphere)
-  Admin/                  Seite „RankSphere“ (Übersicht), Dashboard-Widget, Editor-Panel
+  Admin/                  Übersicht, Einstellungen, Dashboard-Widget, Box im Editor
+  Insights/               Daten aus RankSphere holen, cachen, typgeprüft lesen
   Abilities/              eigene Abilities (WordPress 6.9+), damit auch KI-Agenten/MCP sie nutzen können
 ```
 
@@ -75,18 +76,28 @@ ein Hinweis vor dem Veröffentlichen.
 
 ## Übersicht im WordPress-Admin
 
-Eigene Seite „RankSphere“ (React mit `@wordpress/components`, gebaut mit `@wordpress/scripts`):
+Menü „RankSphere“ → **Übersicht** (Recht `edit_posts`, für alle, die schreiben) und **Einstellungen** (`manage_options`:
+verbinden, trennen, Update-Kanal). Auf dem Server gerendert (PHP, WordPress-Admin-Stile + `assets/admin.css`) – kein
+Build-Schritt, weniger Code beim Kunden:
 
-- **Überblick:** Klicks/Impressionen, KI-Sichtbarkeit, Datenstand – wie die Startseite in RankSphere, kompakt.
-- **Aufgaben:** die wichtigsten offenen Aufgaben mit „In RankSphere öffnen“; SEO-Aufgaben direkt „Übernehmen“.
-- **Texte:** Entwürfe aus RankSphere mit Status, Prüfpunkten, Link zum WordPress-Entwurf.
-- **Tonalität:** Anrede, So schreiben wir / So nicht, Tabu-Wörter – für alle, die in WordPress schreiben.
-- **Editor-Panel** (Block-Editor-Seitenleiste): RankSphere-Daten zur aktuellen Seite (Suchanfragen, Position,
-  Vorschlag für Titel/Beschreibung mit Vorher → Nachher, „Übernehmen“).
-- **Dashboard-Widget:** drei Kennzahlen + nächste Aufgabe, schließbar (Guideline 11).
+- **Überblick:** Urteil, Klicks/Impressionen mit Veränderung, Position, Nennung in KI-Antworten, Datenprobleme.
+- **Nächste Schritte:** die fünf wichtigsten offenen Aufgaben, der Rest als Link nach RankSphere.
+- **Texte:** die letzten Texte mit Stand; „Entwurf bearbeiten“, wenn der WordPress-Entwurf existiert.
+- **So schreiben wir:** Anrede, Tonalität, So / So nicht, bevorzugte Begriffe, Tabu-Wörter.
+- **Box im Editor** (klassische Meta-Box, seitlich): erscheint im Block- **und** im klassischen Editor, auch für eigene
+  Beitragstypen und Seiten, die mit Page-Buildern gebaut sind. Klicks, Impressionen, Position, Suchanfragen,
+  Website-Check-Befunde, tote Backlinks; bei Entwürfen aus RankSphere der Link zum Text. Lädt nach dem Editor
+  (`assets/page-box.js` → `ranksphere/v1/page-insights`), damit das Öffnen eines Beitrags nie auf RankSphere wartet.
+- **Dashboard-Widget:** Urteil, vier Kennzahlen, nächster Schritt; über „Ansicht anpassen“ ausblendbar (Guideline 11).
 
-Die Daten holt **der Server** von RankSphere (Site-Token, signiert) und hält sie 10 Minuten im Transient; der
-Browser spricht nur mit der eigenen WordPress-REST-API (`ranksphere/v1/overview`, Recht `edit_posts`).
+Die Daten holt **der Server** von RankSphere (Site-Token, signiert, `Insights\Insights`) und hält sie 10 Minuten im
+Transient, je Sprache und Projekt; der Browser spricht nur mit WordPress. Alles aus RankSphere wird typgeprüft gelesen
+(`Insights\Value`) und escaped ausgegeben, Links nur mit https.
+
+Vorschläge für Titel/Beschreibung mit „Übernehmen“ in der Box folgen (KI-Aufruf in RankSphere als Job, nie im Request).
+
+**Übersetzung:** Quelltexte Englisch; Deutsch liegt als `languages/ranksphere-de_DE.l10n.php` bei (WordPress' PHP-Format
+ab 6.5), bis translate.wordpress.org übernimmt. `tests/Unit/TranslationsTest.php` prüft, dass jeder Text übersetzt ist.
 
 ## KI-Crawler
 
@@ -131,6 +142,6 @@ liefert je Kanal (Alpha, Beta, RC, Stable) Update-Info und Zip aus. Der WordPres
 | M1 ✅ | Verbinden/Trennen, Status, Widerruf erkennen | WordPress-Verbindung je Projekt, Freigabe-Ablauf |
 | M2 ✅ | SEO-Adapter lesen/schreiben, Änderungsprotokoll + Rückgängig | „Titel/Beschreibung übernehmen“ in Aufgaben und Seiten |
 | M3 ✅ | Entwürfe + Platzhalter-Sperre | „Als Entwurf nach WordPress“ auf der Seite „Texte“, Markdown→Blöcke |
-| M4 | Übersicht im Admin, Editor-Panel, Dashboard-Widget | API für Übersicht/Seiten-Daten (Site-Token) |
+| M4 ✅ | Übersicht im Admin, Box im Editor, Dashboard-Widget, Deutsch | API für Übersicht/Seiten-Daten (Site-Token) |
 | M5 | KI-Crawler-Zählung | Empfang + Auswertung in der KI-Sichtbarkeit |
 | M6 | Abilities, Übersetzung de_DE, Screenshots, Einreichung bei WordPress.org | – |
