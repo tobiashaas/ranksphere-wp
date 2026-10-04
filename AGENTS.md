@@ -10,7 +10,9 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
   nachsehen: `wp-plugin-development`, `wp-rest-api`, `wp-abilities-api`, `wp-plugin-directory-guidelines`, `wp-phpstan`, `wp-env`.
 - Vor jedem Push `composer check` (Composer validieren, Versionen gleich, PHPCS/WPCS, PHPStan Level max, Unit-Tests).
   Integrationstests gegen echtes WordPress: `npm run env:start` und `npm run test:integration` (Docker nötig) – die
-  CI fährt sie gegen WordPress 6.6 und aktuell, je SEO-Plugin einzeln.
+  CI fährt sie gegen WordPress 6.6 und aktuell, je SEO-Plugin einzeln. Die SEO-Plugins stehen nicht in `.wp-env.json`
+  (wp-env würde alle gleichzeitig aktivieren); lokal installiert sie `npm run env:seo-plugins`, geladen werden sie im
+  Test über `RANKSPHERE_TEST_SEO_PLUGIN=<ordner/datei.php>`.
 - Unit-Tests (`tests/Unit`) sind reines PHP ohne WordPress; alles mit WordPress gehört nach `tests/Integration`.
 - Mindestversionen: PHP 8.1, WordPress 6.6 – in Plugin-Header, `readme.txt`, `phpcs.xml.dist` (`testVersion`,
   `minimum_wp_version`) und CI-Matrix gleich halten. Version steht dreimal (Header, `VERSION`, `Stable tag`) –

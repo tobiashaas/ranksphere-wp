@@ -53,27 +53,27 @@ jobs:
         # Lowest supported and current WordPress; each SEO plugin loaded on its own.
         wp: ['6.6', 'latest']
         seo:
-          - { name: 'no SEO plugin', file: '' }
-          - { name: 'Yoast SEO', file: 'wordpress-seo/wp-seo.php' }
-          - { name: 'Rank Math', file: 'seo-by-rank-math/rank-math.php' }
-          - { name: 'SEOPress', file: 'wp-seopress/seopress.php' }
-          - { name: 'All in One SEO', file: 'all-in-one-seo-pack/all_in_one_seo_pack.php' }
-          - { name: 'The SEO Framework', file: 'autodescription/autodescription.php' }
-          - { name: 'Slim SEO', file: 'slim-seo/slim-seo.php' }
+          - { name: 'no SEO plugin', slug: '', file: '' }
+          - { name: 'Yoast SEO', slug: 'wordpress-seo', file: 'wordpress-seo/wp-seo.php' }
+          - { name: 'Rank Math', slug: 'seo-by-rank-math', file: 'seo-by-rank-math/rank-math.php' }
+          - { name: 'SEOPress', slug: 'wp-seopress', file: 'wp-seopress/seopress.php' }
+          - { name: 'All in One SEO', slug: 'all-in-one-seo-pack', file: 'all-in-one-seo-pack/all_in_one_seo_pack.php' }
+          - { name: 'The SEO Framework', slug: 'autodescription', file: 'autodescription/autodescription.php' }
+          - { name: 'Slim SEO', slug: 'slim-seo', file: 'slim-seo/slim-seo.php' }
         exclude:
-          # Current SEO plugins require newer WordPress than 6.6 – tested on latest only.
+          # Current SEO plugins require newer WordPress than 6.6 – they run on latest only.
           - wp: '6.6'
-            seo: { name: 'Yoast SEO', file: 'wordpress-seo/wp-seo.php' }
+            seo: { name: 'Yoast SEO', slug: 'wordpress-seo', file: 'wordpress-seo/wp-seo.php' }
           - wp: '6.6'
-            seo: { name: 'Rank Math', file: 'seo-by-rank-math/rank-math.php' }
+            seo: { name: 'Rank Math', slug: 'seo-by-rank-math', file: 'seo-by-rank-math/rank-math.php' }
           - wp: '6.6'
-            seo: { name: 'SEOPress', file: 'wp-seopress/seopress.php' }
+            seo: { name: 'SEOPress', slug: 'wp-seopress', file: 'wp-seopress/seopress.php' }
           - wp: '6.6'
-            seo: { name: 'All in One SEO', file: 'all-in-one-seo-pack/all_in_one_seo_pack.php' }
+            seo: { name: 'All in One SEO', slug: 'all-in-one-seo-pack', file: 'all-in-one-seo-pack/all_in_one_seo_pack.php' }
           - wp: '6.6'
-            seo: { name: 'The SEO Framework', file: 'autodescription/autodescription.php' }
+            seo: { name: 'The SEO Framework', slug: 'autodescription', file: 'autodescription/autodescription.php' }
           - wp: '6.6'
-            seo: { name: 'Slim SEO', file: 'slim-seo/slim-seo.php' }
+            seo: { name: 'Slim SEO', slug: 'slim-seo', file: 'slim-seo/slim-seo.php' }
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -90,6 +90,9 @@ jobs:
         run: npx wp-env start
         env:
           WP_ENV_CORE: ${{ matrix.wp == 'latest' && 'WordPress/WordPress' || format('WordPress/WordPress#{0}', matrix.wp) }}
+      - name: Install the SEO plugin (tests environment, not activated – the bootstrap loads it)
+        if: matrix.seo.slug != ''
+        run: npx wp-env run tests-cli wp plugin install ${{ matrix.seo.slug }}
       - name: Integration tests
         run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/${{ github.event.repository.name }} env RANKSPHERE_TEST_SEO_PLUGIN=${{ matrix.seo.file }} vendor/bin/phpunit -c phpunit.xml.dist
 

@@ -2,13 +2,13 @@
 Contributors: ranksphere
 Tags: seo, content, ai visibility, drafts, search console
 Requires at least: 6.6
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.1
 Stable tag: 0.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connects your site to RankSphere: drafts written in RankSphere arrive as WordPress drafts, and SEO titles and descriptions stay in sync with your SEO plugin.
+Drafts from RankSphere arrive as WordPress drafts; SEO titles and descriptions stay in sync with your SEO plugin.
 
 == Description ==
 
