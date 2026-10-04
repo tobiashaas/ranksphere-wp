@@ -230,7 +230,7 @@ final class ConnectionController {
 	}
 
 	/**
-	 * HTTPS only; plain HTTP is allowed on local and development sites (RankSphere running locally).
+	 * HTTPS only; plain HTTP only where `ranksphere_allow_insecure_urls` allows it (local and development sites).
 	 *
 	 * @param string $url The address.
 	 */
@@ -242,7 +242,18 @@ final class ConnectionController {
 			return false;
 		}
 
-		return 'https' === $scheme || ( 'http' === $scheme && in_array( wp_get_environment_type(), array( 'local', 'development' ), true ) );
+		if ( 'https' === $scheme ) {
+			return true;
+		}
+
+		/**
+		 * Whether RankSphere may be reached over plain HTTP (a RankSphere running locally).
+		 *
+		 * @param bool $allowed True on local and development sites.
+		 */
+		$insecure = (bool) apply_filters( 'ranksphere_allow_insecure_urls', in_array( wp_get_environment_type(), array( 'local', 'development' ), true ) );
+
+		return 'http' === $scheme && $insecure;
 	}
 
 	/**

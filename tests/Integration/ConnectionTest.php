@@ -138,12 +138,16 @@ final class ConnectionTest extends WP_UnitTestCase {
 		self::assertArrayNotHasKey( Options::CONNECTION, $autoload, 'secrets are not autoloaded' );
 	}
 
-	public function test_plain_http_addresses_are_refused_on_production_sites(): void {
+	public function test_plain_http_addresses_are_refused_unless_allowed(): void {
 		$this->authenticate();
-		$request = $this->connect_request( array( 'api_url' => 'http://ranksphere.test/api/wordpress/v1' ) );
+		$request = fn (): WP_REST_Request => $this->connect_request( array( 'api_url' => 'http://ranksphere.test/api/wordpress/v1' ) );
 
-		self::assertSame( 400, $this->dispatch( $request )->get_status() );
+		add_filter( 'ranksphere_allow_insecure_urls', '__return_false' );
+		self::assertSame( 400, $this->dispatch( $request() )->get_status(), 'production' );
 		self::assertNull( ( new ConnectionStore() )->get() );
+
+		add_filter( 'ranksphere_allow_insecure_urls', '__return_true', 20 );
+		self::assertSame( 201, $this->dispatch( $request() )->get_status(), 'a local RankSphere' );
 	}
 
 	public function test_a_connected_site_is_not_taken_over_by_another_project(): void {
