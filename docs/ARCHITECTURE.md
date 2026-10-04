@@ -106,6 +106,13 @@ Ab WordPress 6.9 meldet das Plugin eigene Abilities an (`ranksphere/get-seo-fiel
 Adapter können KI-Agenten (Claude, Cursor …) sie dann direkt auf der Website nutzen. Darunter läuft derselbe Code
 wie bei REST (eine Domänenschicht, zwei Zugänge).
 
+## Updates
+
+Bis zum Eintrag bei WordPress.org (und für Test-Kanäle danach) aktualisiert sich das Plugin über WordPress' eigenen
+Weg für fremd gehostete Plugins: Header `Update URI` + Filter `update_plugins_ranksphere.cloud`. Das Update erscheint
+unter „Plugins“ wie jedes andere, Auto-Updates eingeschlossen. RankSphere liest die GitHub-Releases dieses Repos und
+liefert je Kanal (Alpha, Beta, RC, Stable) Update-Info und Zip aus. Der WordPress.org-Build enthält den Updater nicht.
+
 ## Qualität
 
 - PHP 8.1+, WordPress 6.6+, `strict_types`, PSR-4, PHPCS (WordPress Coding Standards + PHPCompatibilityWP),

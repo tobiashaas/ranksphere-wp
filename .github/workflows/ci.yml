@@ -105,8 +105,9 @@ jobs:
         with:
           php-version: '8.1'
           coverage: none
+      # The WordPress.org variant: without the updater, which WordPress.org does not allow.
       - name: Build release directory
-        run: bash bin/build-zip.sh
+        run: bash bin/build-zip.sh --wporg
       - uses: wordpress/plugin-check-action@v1
         with:
           build-dir: ./build/ranksphere
@@ -122,8 +123,11 @@ jobs:
         with:
           php-version: '8.1'
           coverage: none
+      - run: bash bin/build-zip.sh --wporg
       - run: bash bin/build-zip.sh
       - uses: actions/upload-artifact@v4
         with:
           name: ranksphere-zip
-          path: build/ranksphere.zip
+          path: |
+            build/ranksphere.zip
+            build/ranksphere-wporg.zip

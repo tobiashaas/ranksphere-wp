@@ -29,6 +29,11 @@ final class Plugin {
 		( new ConnectionController() )->register();
 		( new Revocation() )->register();
 
+		// Builds from RankSphere update themselves; the WordPress.org build has no Updates directory.
+		if ( is_readable( __DIR__ . '/Updates/Updater.php' ) ) {
+			( new Updates\Updater() )->register();
+		}
+
 		if ( is_admin() ) {
 			( new SettingsPage() )->register();
 		}

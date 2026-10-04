@@ -21,8 +21,12 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
 - Mindestversionen: PHP 8.1, WordPress 6.6 – in Plugin-Header, `readme.txt`, `phpcs.xml.dist` (`testVersion`,
   `minimum_wp_version`) und CI-Matrix gleich halten. Version steht dreimal (Header, `VERSION`, `Stable tag`) –
   `composer check-versions` prüft das.
-- Release-Zip: `bash bin/build-zip.sh` (nur Produktions-Autoloader, `.distignore` beachtet). Die CI prüft dasselbe
-  Verzeichnis mit Plugin Check.
+- Release-Zip: `bash bin/build-zip.sh` (mit Updater, für Downloads von ranksphere.cloud) bzw. `--wporg` (ohne
+  `src/Updates` und ohne `Update URI` – WordPress.org erlaubt keine eigenen Updater). Plugin Check läuft auf `--wporg`.
+- **Release:** Version an drei Stellen setzen (Header, `VERSION`, `Stable tag`), Changelog-Abschnitt `= <version> =` in
+  `readme.txt`, mergen, dann Tag `v<version>` auf `main` pushen → `release.yml` prüft, baut beide Zips +
+  `ranksphere.json` und legt das GitHub-Release an (mit Suffix = Pre-Release). RankSphere bietet es danach je Kanal an.
+  Reihenfolge bis 1.0: `1.0.0-alpha.N` → `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0` (**1.0.0 nur nach Freigabe durch Tobias**).
 
 ## Code
 

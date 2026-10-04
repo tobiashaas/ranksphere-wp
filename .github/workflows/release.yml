@@ -1,0 +1,53 @@
+name: Release
+
+# A tag v<version> (v1.0.0-alpha.1, v1.0.0-beta.1, v1.0.0-rc.1, v1.0.0) builds the plugin and
+# publishes a GitHub release. Versions with a suffix are pre-releases. RankSphere reads the
+# releases and offers them to sites by channel (GET /api/wordpress/v1/plugin).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - name: Checks (lint, static analysis, unit tests)
+        run: composer check
+      - name: Tag matches the plugin version
+        run: |
+          version="$(php bin/release-meta.php | php -r 'echo json_decode(stream_get_contents(STDIN))->version;')"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match plugin version ${version}." >&2
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+      - name: Build
+        run: |
+          bash bin/build-zip.sh --wporg
+          bash bin/build-zip.sh
+          php bin/release-meta.php > build/ranksphere.json
+          php bin/release-notes.php "$VERSION" > build/notes.md
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
+          gh release create "$GITHUB_REF_NAME" \
+            build/ranksphere.zip build/ranksphere-wporg.zip build/ranksphere.json \
+            --title "RankSphere ${VERSION}" --notes-file build/notes.md "${flags[@]}"
