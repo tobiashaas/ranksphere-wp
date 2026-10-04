@@ -114,6 +114,27 @@ final class UpdaterTest extends WP_UnitTestCase {
 		self::assertFalse( $this->ask( array(), 'other/other.php' ), 'other plugins are left alone' );
 	}
 
+	public function test_check_again_under_updates_asks_ranksphere_again(): void {
+		$file    = plugin_basename( PLUGIN_FILE );
+		$updater = new Updater();
+		$updater->register();
+		self::assertSame( 9, has_action( 'load-update-core.php', array( $updater, 'force_check' ) ), 'before wp_update_plugins()' );
+
+		$this->ask( array(), $file );
+		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		self::assertIsInt( $admin );
+		wp_set_current_user( $admin );
+		$updater->force_check();
+		$this->ask( array(), $file );
+		self::assertCount( 1, $this->requested, 'opening Updates keeps the cached answer' );
+
+		$_GET['force-check'] = '1';
+		$updater->force_check();
+		unset( $_GET['force-check'] );
+		$this->ask( array(), $file );
+		self::assertCount( 2, $this->requested, '"Check again" asks RankSphere' );
+	}
+
 	public function test_a_package_from_anywhere_else_is_ignored(): void {
 		$this->answer['package'] = 'https://evil.example/ranksphere.zip';
 

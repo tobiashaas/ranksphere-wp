@@ -23,10 +23,13 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
   `composer check-versions` prüft das.
 - Release-Zip: `bash bin/build-zip.sh` (mit Updater, für Downloads von ranksphere.cloud) bzw. `--wporg` (ohne
   `src/Updates` und ohne `Update URI` – WordPress.org erlaubt keine eigenen Updater). Plugin Check läuft auf `--wporg`.
+- Beim Update läuft in derselben Anfrage noch der **alte** Code, die Dateien auf der Platte sind schon die neuen
+  (`upgrader_process_complete`). Klassen, die ein Hook danach braucht, beim Registrieren laden – sonst Fatal, wenn die
+  neue Version sie nicht mehr hat (live passiert: normale Version → `--wporg`, `Channel` fehlte).
 - **Release:** Version an drei Stellen setzen (Header, `VERSION`, `Stable tag`), Changelog-Abschnitt `= <version> =` in
   `readme.txt`, mergen, dann in GitHub Actions „Release“ → „Run workflow“ auf `main` (oder Tag `v<version>` pushen) →
-  `release.yml` prüft, legt den Tag an, baut beide Zips +
-  `ranksphere.json` und legt das GitHub-Release an (mit Suffix = Pre-Release). RankSphere bietet es danach je Kanal an.
+  `release.yml` prüft, legt den Tag an, baut `ranksphere.zip` +
+  `ranksphere.json` (die `--wporg`-Variante nur als CI-Artefakt: wer sie installiert, bekommt keine Updates mehr) und legt das GitHub-Release an (mit Suffix = Pre-Release). RankSphere bietet es danach je Kanal an.
   Reihenfolge bis 1.0: `1.0.0-alpha.N` → `1.0.0-beta.N` → `1.0.0-rc.N` → `1.0.0` (**1.0.0 nur nach Freigabe durch Tobias**).
 
 ## Code

@@ -44,9 +44,16 @@ final class Updater {
 	 * Hooks the update check, the "View details" dialog and the channel setting.
 	 */
 	public function register(): void {
+		// Loaded now, not on first use: `forget` runs after an update, when this request still runs
+		// the old code but the files on disk are already the new ones – maybe a build without them.
+		class_exists( Channel::class );
+
 		add_filter( 'update_plugins_' . self::HOST, array( $this, 'check' ), 10, 3 );
 		add_filter( 'plugins_api', array( $this, 'information' ), 20, 3 );
 		add_action( 'upgrader_process_complete', array( $this, 'forget' ) );
+		// "Check again" under Dashboard → Updates asks RankSphere too, not the cached answer.
+		// Before wp_update_plugins(), which WordPress hooks to the same action.
+		add_action( 'load-update-core.php', array( $this, 'force_check' ), 9 );
 	}
 
 	/**
@@ -133,6 +140,16 @@ final class Updater {
 			'download_link' => $release['package'],
 			'sections'      => array( 'changelog' => wp_kses_post( $release['changelog'] ) ),
 		);
+	}
+
+	/**
+	 * Action `load-update-core.php`: on "Check again" (force-check) the cached answer is dropped.
+	 */
+	public function force_check(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- WordPress' own link has no nonce; this only drops a cache.
+		if ( isset( $_GET['force-check'] ) && current_user_can( 'update_plugins' ) ) {
+			$this->forget();
+		}
 	}
 
 	/**
