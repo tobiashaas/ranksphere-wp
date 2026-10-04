@@ -25,7 +25,7 @@ final class History {
 	 * @param int                  $post_id Post ID.
 	 * @param array<string, mixed> $before  Changed fields before.
 	 * @param array<string, mixed> $after   The same fields after.
-	 * @param string               $source  "ranksphere" or "undo".
+	 * @param string               $source  "ranksphere", "suggestion" (taken over in the editor) or "undo".
 	 */
 	public function record( int $post_id, array $before, array $after, string $source = 'ranksphere' ): string {
 		$id      = wp_generate_uuid4();

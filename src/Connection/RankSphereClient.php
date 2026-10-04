@@ -39,6 +39,32 @@ final class RankSphereClient {
 	}
 
 	/**
+	 * A signed POST with a JSON body; blocking ones return the JSON object RankSphere answers with.
+	 *
+	 * @param string               $endpoint Path below the API URL, with a leading slash.
+	 * @param array<string, mixed> $payload  JSON body.
+	 * @param bool                 $blocking Wait for the answer; without waiting the result is an empty array.
+	 *
+	 * @return array<mixed>|\WP_Error
+	 */
+	public function send( string $endpoint, array $payload, bool $blocking = true ): array|\WP_Error {
+		$response = $this->post( $endpoint, $payload, $blocking );
+
+		if ( is_wp_error( $response ) || ! $blocking ) {
+			return is_wp_error( $response ) ? $response : array();
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $status < 200 || $status > 299 || ! is_array( $data ) ) {
+			return new \WP_Error( 'ranksphere_http_' . $status, 'RankSphere answered with status ' . $status . '.', array( 'status' => $status ) );
+		}
+
+		return $data;
+	}
+
+	/**
 	 * A signed GET that expects a JSON object back.
 	 *
 	 * @param string                $endpoint Path below the API URL, with a leading slash.

@@ -12,8 +12,10 @@ namespace RankSphere\Admin;
 use RankSphere\Connection\ConnectionStore;
 use RankSphere\Content\Drafts;
 use RankSphere\Insights\Insights;
+use RankSphere\Insights\Suggestions;
 use RankSphere\Insights\Value;
 use RankSphere\Rest\ConnectionController;
+use RankSphere\Seo\SeoService;
 use WP_Post;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -95,6 +97,54 @@ final class PageBox {
 	 * not for RankSphere.
 	 */
 	public function register_route(): void {
+		$post_id = array(
+			'type'     => 'integer',
+			'required' => true,
+			'minimum'  => 1,
+		);
+		$can     = static fn ( WP_REST_Request $request ): bool => current_user_can( 'edit_post', self::post_id( $request ) );
+
+		register_rest_route(
+			ConnectionController::NAMESPACE,
+			'/page-suggestion',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( $this, 'suggestion' ),
+					'permission_callback' => $can,
+					'args'                => array( 'post_id' => $post_id ),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( $this, 'suggest' ),
+					'permission_callback' => $can,
+					'args'                => array( 'post_id' => $post_id ),
+				),
+			)
+		);
+		register_rest_route(
+			ConnectionController::NAMESPACE,
+			'/page-suggestion/apply',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'apply' ),
+				'permission_callback' => $can,
+				'args'                => array(
+					'post_id' => $post_id,
+					'field'   => array(
+						'type'     => 'string',
+						'required' => true,
+						'enum'     => Suggestions::FIELDS,
+					),
+					'value'   => array(
+						'type'      => 'string',
+						'required'  => true,
+						'minLength' => 1,
+						'maxLength' => 500,
+					),
+				),
+			)
+		);
 		register_rest_route(
 			ConnectionController::NAMESPACE,
 			'/page-insights',
@@ -124,6 +174,175 @@ final class PageBox {
 		$post = get_post( self::post_id( $request ) );
 
 		return new WP_REST_Response( array( 'html' => $post instanceof WP_Post ? $this->html( $post ) : '' ) );
+	}
+
+	/**
+	 * `POST /page-suggestion`: asks RankSphere for a title and description.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 *
+	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
+	 */
+	public function suggest( WP_REST_Request $request ): WP_REST_Response {
+		$post = get_post( self::post_id( $request ) );
+
+		if ( ! $post instanceof WP_Post ) {
+			return new WP_REST_Response(
+				array(
+					'status' => 'failed',
+					'html'   => '',
+				)
+			);
+		}
+
+		return self::state( $post, ( new Suggestions( $this->store ) )->start( $post ) );
+	}
+
+	/**
+	 * `GET /page-suggestion`: where the suggestion stands (the script polls while it is pending).
+	 *
+	 * @param WP_REST_Request $request The request.
+	 *
+	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
+	 */
+	public function suggestion( WP_REST_Request $request ): WP_REST_Response {
+		$post = get_post( self::post_id( $request ) );
+
+		if ( ! $post instanceof WP_Post ) {
+			return new WP_REST_Response(
+				array(
+					'status' => 'failed',
+					'html'   => '',
+				)
+			);
+		}
+
+		return self::state( $post, ( new Suggestions( $this->store ) )->status( $post ) );
+	}
+
+	/**
+	 * `POST /page-suggestion/apply`: takes one suggested field over.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 *
+	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
+	 */
+	public function apply( WP_REST_Request $request ): WP_REST_Response {
+		$post  = get_post( self::post_id( $request ) );
+		$field = $request->get_param( 'field' );
+		$value = $request->get_param( 'value' );
+
+		if ( ! $post instanceof WP_Post || ! is_string( $field ) || ! is_string( $value ) ) {
+			return new WP_REST_Response(
+				array(
+					'status' => 'failed',
+					'html'   => '',
+				),
+				400
+			);
+		}
+
+		$result = ( new Suggestions( $this->store ) )->apply( $post, $field, $value );
+
+		if ( $result instanceof \WP_Error || array() !== $result['unsupported'] ) {
+			$html = '<p>' . esc_html__( 'The SEO plugin did not take the change.', 'ranksphere' ) . '</p>';
+
+			return new WP_REST_Response(
+				array(
+					'status' => 'failed',
+					'html'   => $html,
+				)
+			);
+		}
+
+		$html = '<div class="notice notice-success inline"><p>'
+			. esc_html( 'title' === $field ? __( 'SEO title saved.', 'ranksphere' ) : __( 'Meta description saved.', 'ranksphere' ) )
+			. ' ' . esc_html__( 'Reload the page before you save the post – otherwise the SEO plugin\'s fields still hold the old value and saving would bring it back.', 'ranksphere' )
+			. '</p><p><button type="button" class="button button-small" data-ranksphere-reload>' . esc_html__( 'Reload page', 'ranksphere' ) . '</button></p></div>';
+
+		return new WP_REST_Response(
+			array(
+				'status' => 'applied',
+				'html'   => $html,
+			)
+		);
+	}
+
+	/**
+	 * RankSphere's state of the suggestion as status and HTML for the box.
+	 *
+	 * @param WP_Post                $post  The post.
+	 * @param array<mixed>|\WP_Error $state RankSphere's answer.
+	 */
+	private static function state( WP_Post $post, array|\WP_Error $state ): WP_REST_Response {
+		$status = $state instanceof \WP_Error ? 'failed' : Value::text( $state, 'status' );
+
+		$html = match ( true ) {
+			$state instanceof \WP_Error => '<p>' . esc_html( OverviewPage::error_message( (string) $state->get_error_code() ) ) . '</p>' . self::suggest_button( __( 'Try again', 'ranksphere' ) ),
+			'pending' === $status        => '<p class="ranksphere-muted"><span class="spinner is-active ranksphere-spinner"></span>' . esc_html__( 'RankSphere is writing a suggestion …', 'ranksphere' ) . '</p>',
+			'failed' === $status         => '<p>' . esc_html( '' !== Value::text( $state, 'error' ) ? Value::text( $state, 'error' ) : __( 'The suggestion could not be created.', 'ranksphere' ) ) . '</p>' . self::suggest_button( __( 'Try again', 'ranksphere' ) ),
+			'done' === $status           => self::proposal( $post, $state ),
+			default                      => self::suggestion_intro(),
+		};
+
+		return new WP_REST_Response(
+			array(
+				'status' => '' !== $status ? $status : 'none',
+				'html'   => $html,
+			)
+		);
+	}
+
+	/**
+	 * The suggestion next to what the SEO plugin holds now, one "Apply" per field.
+	 *
+	 * @param WP_Post      $post  The post.
+	 * @param array<mixed> $state RankSphere's answer.
+	 */
+	private static function proposal( WP_Post $post, array $state ): string {
+		$current = SeoService::current()->read( $post->ID );
+		$labels  = array(
+			'title'       => __( 'SEO title', 'ranksphere' ),
+			'description' => __( 'Meta description', 'ranksphere' ),
+		);
+		$html    = '' !== Value::text( $state, 'why' ) ? '<p class="ranksphere-muted">' . esc_html( Value::text( $state, 'why' ) ) . '</p>' : '';
+
+		foreach ( $labels as $field => $label ) {
+			$value = Value::text( $state, $field );
+
+			if ( '' === $value ) {
+				continue;
+			}
+
+			$now   = is_string( $current[ $field ] ) && '' !== $current[ $field ] ? $current[ $field ] : __( 'Default of the SEO plugin', 'ranksphere' );
+			$html .= '<div class="ranksphere-proposal"><h4>' . esc_html( $label ) . '</h4>'
+				. '<p class="ranksphere-before"><span class="screen-reader-text">' . esc_html__( 'Now:', 'ranksphere' ) . ' </span>' . esc_html( $now ) . '</p>'
+				. '<p class="ranksphere-after"><span class="screen-reader-text">' . esc_html__( 'Suggestion:', 'ranksphere' ) . ' </span>' . esc_html( $value ) . '</p>'
+				. '<p class="ranksphere-proposal-actions"><span class="ranksphere-muted">' . esc_html(
+					/* translators: %d: number of characters. */
+					sprintf( _n( '%d character', '%d characters', mb_strlen( $value ), 'ranksphere' ), mb_strlen( $value ) )
+				) . '</span> <button type="button" class="button button-small" data-ranksphere-apply="' . esc_attr( $field ) . '" data-value="' . esc_attr( $value ) . '">' . esc_html__( 'Apply', 'ranksphere' ) . '</button></p></div>';
+		}
+
+		return $html . self::suggest_button( __( 'New suggestion', 'ranksphere' ), 'button-link' );
+	}
+
+	/**
+	 * Before any suggestion: what it does, and the button.
+	 */
+	private static function suggestion_intro(): string {
+		return '<p class="ranksphere-muted">' . esc_html__( 'RankSphere suggests both from the searches this page is found with, its text and your company\'s voice. Nothing changes until you apply it.', 'ranksphere' ) . '</p>'
+			. self::suggest_button( __( 'Create suggestion', 'ranksphere' ) );
+	}
+
+	/**
+	 * The button that asks RankSphere.
+	 *
+	 * @param string $label   Button text.
+	 * @param string $classes CSS classes.
+	 */
+	private static function suggest_button( string $label, string $classes = 'button' ): string {
+		return '<p><button type="button" class="' . esc_attr( $classes ) . '" data-ranksphere-suggest>' . esc_html( $label ) . '</button></p>';
 	}
 
 	/**
@@ -178,7 +397,9 @@ final class PageBox {
 			return '<p>' . esc_html( OverviewPage::error_message( $entry['error'] ?? null ) ) . '</p>';
 		}
 
-		return $this->figures( $entry['data'] ) . ( '' !== $text ? self::link( $text, __( 'Text and review in RankSphere', 'ranksphere' ) ) : '' );
+		return $this->figures( $entry['data'] )
+			. '<h4>' . esc_html__( 'Title and description', 'ranksphere' ) . '</h4><div data-ranksphere-suggestion>' . self::suggestion_intro() . '</div>'
+			. ( '' !== $text ? self::link( $text, __( 'Text and review in RankSphere', 'ranksphere' ) ) : '' );
 	}
 
 	/**

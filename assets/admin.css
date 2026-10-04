@@ -240,3 +240,38 @@
 .ranksphere-next {
 	margin: 12px 0 8px;
 }
+
+.ranksphere-proposal {
+	margin: 8px 0 12px;
+	padding: 8px 10px;
+	border: 1px solid var(--ranksphere-line);
+	border-radius: 6px;
+	background: #fff;
+}
+
+.ranksphere-proposal h4 {
+	margin: 0 0 4px;
+}
+
+.ranksphere-before {
+	margin: 0 0 4px;
+	color: var(--ranksphere-muted);
+}
+
+.ranksphere-after {
+	margin: 0 0 6px;
+	font-weight: 600;
+}
+
+.ranksphere-proposal-actions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+}
+
+.ranksphere-spinner {
+	float: none;
+	margin: 0 6px 0 0;
+}

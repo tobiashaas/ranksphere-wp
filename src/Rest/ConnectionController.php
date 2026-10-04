@@ -226,7 +226,34 @@ final class ConnectionController {
 			'seo_plugin'     => SeoPlugins::active(),
 			'abilities'      => function_exists( 'wp_register_ability' ),
 			'site_url'       => home_url( '/' ),
+			'post_types'     => self::post_types(),
 		);
+	}
+
+	/**
+	 * Post types a text from RankSphere can become: public ones with an editor, which the current user
+	 * (RankSphere's) may create – custom ones like "Services" included, with the site's labels.
+	 *
+	 * @return list<array{name: string, label: string}>
+	 */
+	private static function post_types(): array {
+		$types = array();
+
+		foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $type ) {
+			$create = $type->cap->create_posts ?? null;
+			$label  = $type->labels->singular_name ?? null;
+
+			if ( 'attachment' === $type->name || ! $type->show_ui || ! post_type_supports( $type->name, 'editor' ) || ! is_string( $create ) || ! current_user_can( $create ) ) {
+				continue;
+			}
+
+			$types[] = array(
+				'name'  => $type->name,
+				'label' => is_string( $label ) && '' !== $label ? $label : $type->name,
+			);
+		}
+
+		return $types;
 	}
 
 	/**
