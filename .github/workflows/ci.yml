@@ -125,7 +125,7 @@ jobs:
           coverage: none
       - run: bash bin/build-zip.sh --wporg
       - run: bash bin/build-zip.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ranksphere-zip
           path: |
