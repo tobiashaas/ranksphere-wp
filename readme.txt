@@ -20,7 +20,7 @@ RankSphere analyses how a website is found in Google and in AI assistants such a
 
 = External service =
 
-This plugin is an interface to RankSphere (https://ranksphere.cloud), a service operated by the plugin's author. It sends nothing until an administrator connects the site under "RankSphere" in the admin and approves the connection. Once connected, RankSphere sends drafts and SEO fields to the site, and the site sends the data needed for the overview back to RankSphere.
+This plugin is an interface to RankSphere (https://ranksphere.cloud), a service operated by the plugin's author. It sends nothing until an administrator connects the site under "RankSphere" in the admin and approves the connection. Once connected, RankSphere sends drafts and SEO fields to the site, and the site sends the data needed for the overview back to RankSphere. When the connection ends in WordPress (you disconnect, the application password is revoked or the approving user is deleted), the site tells RankSphere so it stops using it; that message contains only the reason.
 
 * Terms of use: https://ranksphere.cloud/nutzungsbedingungen
 * Privacy policy: https://ranksphere.cloud/datenschutz
@@ -32,6 +32,10 @@ This plugin is an interface to RankSphere (https://ranksphere.cloud), a service 
 
 == Frequently Asked Questions ==
 
+= How does RankSphere get access? =
+
+Through an application password, a WordPress feature since 5.6. You approve it on WordPress' own screen and can revoke it at any time under Users → Profile; the plugin then ends the connection immediately. In addition, every request from RankSphere is signed with a secret only RankSphere and your site know, and each signature is accepted once.
+
 = Does the plugin publish anything? =
 
 No. Texts arrive as drafts. Publishing is always done by a person in WordPress.
@@ -41,6 +45,9 @@ No. Texts arrive as drafts. Publishing is always done by a person in WordPress.
 Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework and Slim SEO. Without an SEO plugin, RankSphere outputs title and description itself.
 
 == Changelog ==
+
+= Unreleased =
+* Connect and disconnect: approval through application passwords, signed requests from RankSphere, status route, connection ends when the application password is revoked or the user deleted.
 
 = 0.1.0 =
 * Plugin skeleton: connection status page, lifecycle, upgrade routine.

@@ -120,8 +120,8 @@ wie bei REST (eine Domänenschicht, zwei Zugänge).
 
 | | Inhalt | Gegenstück in RankSphere |
 |---|---|---|
-| M0 | Grundgerüst, CI, Plan (dieser Stand) | – |
-| M1 | Verbinden/Trennen, Status, Widerruf erkennen | WordPress-Verbindung je Projekt, Freigabe-Ablauf |
+| M0 ✅ | Grundgerüst, CI, Plan | – |
+| M1 ✅ | Verbinden/Trennen, Status, Widerruf erkennen | WordPress-Verbindung je Projekt, Freigabe-Ablauf |
 | M2 | SEO-Adapter lesen/schreiben, Änderungsprotokoll + Rückgängig | „Titel/Beschreibung übernehmen“ in Aufgaben und Seiten |
 | M3 | Entwürfe + Platzhalter-Sperre | „Als Entwurf nach WordPress“ auf der Seite „Texte“, Markdown→Blöcke |
 | M4 | Übersicht im Admin, Editor-Panel, Dashboard-Widget | API für Übersicht/Seiten-Daten (Site-Token) |

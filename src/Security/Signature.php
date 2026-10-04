@@ -45,6 +45,24 @@ final class Signature {
 	}
 
 	/**
+	 * The path both sides sign: the path itself plus the query with its keys sorted, so the order
+	 * a client sends parameters in does not matter. For calls into WordPress the path is the REST
+	 * route (`/ranksphere/v1/status`) – independent of permalinks and of a subdirectory install.
+	 *
+	 * @param string                  $path  Path with a leading slash, no query.
+	 * @param array<array-key, mixed> $query Query parameters.
+	 */
+	public static function canonical_path( string $path, array $query ): string {
+		if ( array() === $query ) {
+			return $path;
+		}
+
+		ksort( $query, SORT_STRING );
+
+		return $path . '?' . http_build_query( $query, '', '&', PHP_QUERY_RFC3986 );
+	}
+
+	/**
 	 * Whether a received signature is valid and fresh.
 	 *
 	 * @param string $signature Hex signature from the request.
