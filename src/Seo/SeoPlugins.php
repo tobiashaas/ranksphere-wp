@@ -73,4 +73,19 @@ final class SeoPlugins {
 
 		return null;
 	}
+
+	/**
+	 * The adapter for the active SEO plugin; the plugin's own fields without one.
+	 */
+	public static function adapter(): Adapter {
+		return match ( self::active()['slug'] ?? null ) {
+			'wordpress-seo'       => new Adapters\Yoast(),
+			'seo-by-rank-math'    => new Adapters\RankMath(),
+			'wp-seopress'         => new Adapters\SeoPress(),
+			'all-in-one-seo-pack' => new Adapters\Aioseo(),
+			'autodescription'     => new Adapters\SeoFramework(),
+			'slim-seo'            => new Adapters\SlimSeo(),
+			default               => new Adapters\Native(),
+		};
+	}
 }

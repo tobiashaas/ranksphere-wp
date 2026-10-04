@@ -4,7 +4,7 @@ Tags: seo, content, ai visibility, drafts, search console
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0-alpha.1
+Stable tag: 1.0.0-alpha.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,6 +47,12 @@ No. Texts arrive as drafts. Publishing is always done by a person in WordPress.
 Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework and Slim SEO. Without an SEO plugin, RankSphere outputs title and description itself.
 
 == Changelog ==
+
+= 1.0.0-alpha.2 =
+* SEO title, meta description, focus keywords, canonical and noindex from RankSphere – written into Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework or Slim SEO the way each of them stores it; without an SEO plugin RankSphere outputs them itself.
+* Every change is recorded per post and can be undone from RankSphere, as long as nobody changed the field again since.
+* Texts from RankSphere arrive as drafts (never published) with their SEO fields; a draft that is already published is never touched again.
+* Drafts with open placeholders like [[…]] for missing facts cannot be published until they are filled in.
 
 = 1.0.0-alpha.1 =
 * First test version.

@@ -129,8 +129,8 @@ liefert je Kanal (Alpha, Beta, RC, Stable) Update-Info und Zip aus. Der WordPres
 |---|---|---|
 | M0 ✅ | Grundgerüst, CI, Plan | – |
 | M1 ✅ | Verbinden/Trennen, Status, Widerruf erkennen | WordPress-Verbindung je Projekt, Freigabe-Ablauf |
-| M2 | SEO-Adapter lesen/schreiben, Änderungsprotokoll + Rückgängig | „Titel/Beschreibung übernehmen“ in Aufgaben und Seiten |
-| M3 | Entwürfe + Platzhalter-Sperre | „Als Entwurf nach WordPress“ auf der Seite „Texte“, Markdown→Blöcke |
+| M2 ✅ | SEO-Adapter lesen/schreiben, Änderungsprotokoll + Rückgängig | „Titel/Beschreibung übernehmen“ in Aufgaben und Seiten |
+| M3 ✅ | Entwürfe + Platzhalter-Sperre | „Als Entwurf nach WordPress“ auf der Seite „Texte“, Markdown→Blöcke |
 | M4 | Übersicht im Admin, Editor-Panel, Dashboard-Widget | API für Übersicht/Seiten-Daten (Site-Token) |
 | M5 | KI-Crawler-Zählung | Empfang + Auswertung in der KI-Sichtbarkeit |
 | M6 | Abilities, Übersetzung de_DE, Screenshots, Einreichung bei WordPress.org | – |
