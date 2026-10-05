@@ -106,7 +106,7 @@ final class TextsTest extends RankSphereTestCase {
 		self::assertStringContainsString( 'data-ranksphere-type-fields="success_story" hidden', $html, 'facts of other kinds stay hidden' );
 		self::assertStringContainsString( 'name="required_success_story_quote"', $html );
 		self::assertStringContainsString( 'Heizung &lt;b&gt;tauschen&lt;/b&gt;', $html, 'escaped' );
-		self::assertStringContainsString( 'page=ranksphere-texts&amp;text=7', $html );
+		self::assertMatchesRegularExpression( '/page=ranksphere-texts&(amp|#038);text=7/', $html );
 		self::assertStringContainsString( 'rs-pill-watch', $html );
 
 		$this->answers['/api/wordpress/v1/texts'] = array( 'blocked' => 'Für Texte braucht RankSphere einen KI-Zugang.' ) + self::overview();

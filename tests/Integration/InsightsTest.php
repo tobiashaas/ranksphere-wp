@@ -138,7 +138,7 @@ final class InsightsTest extends RankSphereTestCase {
 		self::assertStringContainsString( 'Titel &lt;script&gt;', $html, 'escaped' );
 		self::assertStringNotContainsString( '<script>', $html );
 		self::assertStringContainsString( '2 more steps in RankSphere', $html );
-		self::assertStringContainsString( 'page=ranksphere-texts&amp;text=7', $html, 'texts open here in WordPress' );
+		self::assertMatchesRegularExpression( '/page=ranksphere-texts&(amp|#038);text=7/', $html, 'texts open here in WordPress (older WordPress writes & as &#038;)' );
 		self::assertStringContainsString( 'rs-pill-watch', $html, 'the state in its tone' );
 		self::assertStringContainsString( 'Kurze Sätze', $html );
 		self::assertStringNotContainsString( 'javascript:', $html, 'only https links' );
