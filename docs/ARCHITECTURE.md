@@ -94,7 +94,9 @@ Die Daten holt **der Server** von RankSphere (Site-Token, signiert, `Insights\In
 Transient, je Sprache und Projekt; der Browser spricht nur mit WordPress. Alles aus RankSphere wird typgeprüft gelesen
 (`Insights\Value`) und escaped ausgegeben, Links nur mit https.
 
-Vorschläge für Titel/Beschreibung mit „Übernehmen“ in der Box folgen (KI-Aufruf in RankSphere als Job, nie im Request).
+**Vorschlag erstellen** (ab 1.0.0-alpha.5): in der Box SEO-Titel und Meta-Beschreibung aus den echten Suchanfragen der
+Seite, ihrem Text und der Tonalität – geschrieben und geprüft in RankSphere (Job, Länge, Tabu-Wörter), Vorher → Nachher,
+„Übernehmen“ je Feld über das SEO-Plugin mit Verlauf; RankSphere bekommt die Änderung fürs Protokoll.
 
 **Übersetzung:** Quelltexte Englisch; Deutsch liegt als `languages/ranksphere-de_DE.l10n.php` bei (WordPress' PHP-Format
 ab 6.5), bis translate.wordpress.org übernimmt. `tests/Unit/TranslationsTest.php` prüft, dass jeder Text übersetzt ist.

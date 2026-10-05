@@ -46,7 +46,8 @@ im REST-Index (`GET /wp-json/` bzw. `/?rest_route=/`: Namespace `ranksphere/v1`;
 ```json
 { "connected": true, "project_id": "01J…", "plugin_version": "0.2.0", "wp_version": "7.0", "php_version": "8.3",
   "seo_plugin": { "slug": "wordpress-seo", "name": "Yoast SEO", "version": "28.6" },
-  "abilities": true, "site_url": "https://example.com" }
+  "abilities": true, "site_url": "https://example.com",
+  "post_types": [ { "name": "post", "label": "Beitrag" }, { "name": "leistungen", "label": "Leistung" } ] }
 ```
 
 ### `POST /connection` · `DELETE /connection` (M1)
@@ -118,6 +119,20 @@ Recht `edit_post` für diesen Beitrag. `GET` liefert die Felder dieses Beitrags 
 - **Platzhalter-Sperre:** Enthält ein Entwurf von RankSphere noch `[[…]]` (fehlende Angaben), setzt das Plugin
   „Veröffentlichen“/„Planen“ zurück auf Entwurf und erklärt das im Editor. Kategorien/Schlagwörter folgen.
 
+`post_types` (ab 1.0.0-alpha.5): öffentliche Typen mit Editor, die der Benutzer von RankSphere anlegen darf – auch
+eigene wie „Leistungen“, mit dem Namen der Website. RankSphere fragt damit beim ersten Senden eines Textes, als was er
+angelegt wird (`POST /drafts` mit diesem `post_type`); ohne die Liste (ältere Plugins) Beitrag oder Seite.
+
+### `GET|POST /page-suggestion?post_id=…`, `POST /page-suggestion/apply` (ab 1.0.0-alpha.5, nur eingeloggte Benutzer)
+
+„Vorschlag erstellen“ in der Box im Editor, Recht `edit_post` für genau diesen Beitrag. `POST` fragt RankSphere
+(`POST /suggestions` mit Permalink, den aktuellen Werten des SEO-Plugins und dem Text des Beitrags ohne Shortcodes),
+`GET` fragt den Stand ab (das Skript alle 3 s, solange `pending`). Antwort jeweils `{ "status": "none|pending|done|failed",
+"html": "…" }`, auf dem Server gerendert und escaped. `apply` mit `field` (`title|description`) und `value` schreibt über
+das SEO-Plugin mit Verlauf (`source: suggestion`) und meldet die Änderung an RankSphere (`POST /changes`); der Hinweis
+danach bittet, die Seite neu zu laden, bevor der Beitrag gespeichert wird (sonst schreiben die Felder des SEO-Plugins im
+Editor den alten Wert zurück).
+
 ### `GET /page-insights?post_id=…` (M4, nur für eingeloggte Benutzer – nicht für RankSphere)
 
 Füllt die RankSphere-Box im Editor: Cookie + REST-Nonce, Recht `edit_post` für genau diesen Beitrag. Antwort
@@ -131,6 +146,9 @@ Die Übersichtsseite und das Dashboard-Widget rendert der Server direkt, ohne ei
 |---|---|
 | `GET /overview?lang=de_DE` | Übersicht für den Admin (M4), Sätze in der Sprache des WordPress-Benutzers |
 | `GET /pages?url=…&lang=…` | Daten zu einer Seite für die Box im Editor (M4); nur Adressen der verbundenen Website, sonst `422` |
+| `POST /suggestions` | Vorschlag starten: `{ "url", "lang", "current": { "title", "description" }, "content" }` → `{ "status": "pending" }` oder `failed` mit `error` (kein KI-Zugang, Abo abgelaufen, mehr als 20 je Stunde) |
+| `GET /suggestions?url=…` | Stand: `none`, `pending`, `done` mit `title`/`description` (ein Feld, das RankSphere' Prüfung nicht besteht, ist `null`) und `why`, `failed` mit `error` |
+| `POST /changes` | in WordPress übernommene Änderung: `{ "url", "post_id", "before", "after", "history_id", "by" }` → `201`; erscheint im Änderungsprotokoll, Rückgängig auch aus RankSphere |
 | `POST /crawler-visits` | `{ "day": "2026-10-04", "visits": [ { "bot": "GPTBot", "path": "/", "hits": 12 } ] }` (M5) |
 | `POST /disconnect` | die Website hat die Verbindung getrennt: `{ "reason": "admin" \| "revoked" \| "user_deleted" }` (M1) |
 
