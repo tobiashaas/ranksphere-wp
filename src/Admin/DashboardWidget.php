@@ -56,48 +56,61 @@ final class DashboardWidget {
 			return;
 		}
 
-		echo '<div class="ranksphere ranksphere-widget">';
-
-		if ( null === $overview['data'] ) {
-			echo '<p>' . esc_html( OverviewPage::error_message( $overview['error'] ) ) . '</p>';
-		} else {
-			$this->render_data( $overview['data'] );
-		}
-
-		echo '</div>';
+		Ui::out(
+			'<div class="ranksphere rs-widget">'
+			. ( null === $overview['data'] ? Ui::note( 'watch', OverviewPage::error_message( $overview['error'] ) ) : self::content( $overview['data'] ) )
+			. '</div>'
+		);
 	}
 
 	/**
-	 * Figures, the next step and the links.
+	 * Verdict, four small figures, the next step, the links.
 	 *
 	 * @param array<mixed> $data RankSphere's answer.
 	 */
-	private function render_data( array $data ): void {
-		$verdict = Value::map( $data, 'verdict' ) ?? array();
-		$task    = Value::maps( $data, 'tasks' )[0] ?? null;
+	private static function content( array $data ): string {
+		$verdict  = Value::map( $data, 'verdict' ) ?? array();
+		$task     = Value::maps( $data, 'tasks' )[0] ?? null;
+		$search   = Value::map( $data, 'search' );
+		$previous = null === $search ? null : Value::map( $search, 'previous' );
+		$ai       = Value::map( $data, 'ai' );
+		$html     = '' !== Value::text( $verdict, 'label' ) ? Ui::verdict( Value::text( $verdict, 'tone' ), Value::text( $verdict, 'label' ) . ' – ' . Value::text( $verdict, 'text' ) ) : '';
+		$minis    = '';
 
-		if ( '' !== Value::text( $verdict, 'label' ) ) {
-			printf(
-				'<p class="ranksphere-verdict ranksphere-tone-%1$s"><strong>%2$s</strong> %3$s</p>',
-				esc_attr( sanitize_key( Value::text( $verdict, 'tone' ) ) ),
-				esc_html( Value::text( $verdict, 'label' ) ),
-				esc_html( Value::text( $verdict, 'text' ) )
-			);
+		if ( null !== $search ) {
+			foreach ( array(
+				array( __( 'Clicks', 'ranksphere' ), 'pointer', 'clicks' ),
+				array( __( 'Impressions', 'ranksphere' ), 'eye', 'impressions' ),
+			) as list( $label, $icon, $key ) ) {
+				$now    = Value::number( $search, $key );
+				$minis .= self::mini( $label, $icon, null === $now ? '–' : Value::count( $now ), Ui::delta( $now, null === $previous ? null : Value::number( $previous, $key ) ) );
+			}
+
+			$position = Value::number( $search, 'position' );
+			$minis   .= self::mini( __( 'Average position', 'ranksphere' ), 'target', null === $position ? '–' : number_format_i18n( $position, 1 ), '' );
 		}
 
-		OverviewPage::render_figures( $data, true );
+		$rate   = null === $ai ? null : Value::number( $ai, 'mention_rate' );
+		$minis .= self::mini( __( 'Named in AI answers', 'ranksphere' ), 'sparkles', null === $rate ? '–' : Value::percent( $rate ), '' );
+		$html  .= '<div class="rs-mini-figures">' . $minis . '</div>';
 
 		if ( null !== $task ) {
-			printf(
-				'<p class="ranksphere-next"><span class="ranksphere-muted">%1$s</span><br><strong>%2$s</strong></p>',
-				esc_html__( 'Next step', 'ranksphere' ),
-				esc_html( Value::text( $task, 'title' ) )
-			);
+			$html .= '<div class="rs-next"><p class="rs-next-label">' . esc_html__( 'Next step', 'ranksphere' ) . '</p><p><strong>' . esc_html( Value::text( $task, 'title' ) ) . '</strong></p></div>';
 		}
-		?>
-		<p class="ranksphere-widget-links">
-			<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . OverviewPage::SLUG ) ); ?>"><?php esc_html_e( 'RankSphere overview', 'ranksphere' ); ?></a>
-		</p>
-		<?php
+
+		return $html . '<p class="rs-actions"><a class="rs-link" href="' . esc_url( admin_url( 'admin.php?page=' . OverviewPage::SLUG ) ) . '">' . esc_html__( 'RankSphere overview', 'ranksphere' ) . '</a>'
+			. ( current_user_can( TextsPage::CAPABILITY ) ? '<a class="rs-link" href="' . esc_url( TextsPage::url() ) . '">' . esc_html__( 'Write a text', 'ranksphere' ) . '</a>' : '' ) . '</p>';
+	}
+
+	/**
+	 * One small figure.
+	 *
+	 * @param string $label Its name.
+	 * @param string $icon  Icon key.
+	 * @param string $value Formatted value.
+	 * @param string $delta The change (HTML) or ''.
+	 */
+	private static function mini( string $label, string $icon, string $value, string $delta ): string {
+		return '<div class="rs-mini"><span class="rs-mini-label">' . Ui::icon( $icon ) . esc_html( $label ) . '</span><span class="rs-figure">' . esc_html( $value ) . '</span>' . $delta . '</div>';
 	}
 }

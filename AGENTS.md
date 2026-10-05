@@ -39,6 +39,9 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
 - Quelltexte der Oberfläche auf **Englisch** mit Text-Domain `ranksphere` (WordPress-Konvention, übersetzt wird über
   translate.wordpress.org); Deutsch liegt bis dahin in `languages/ranksphere-de_DE.l10n.php` (Du-Form wie WordPress'
   Deutsch). Jeder neue Text braucht dort seine Übersetzung – `tests/Unit/TranslationsTest.php` schlägt sonst fehl.
+- Admin-Oberfläche nur aus den Bausteinen in `Admin\Ui` (Kachel, Kennzahl, Veränderung, Urteil, Pille, Hinweis, Link,
+  Icon) und den Tokens in `assets/admin.css` – sie spiegeln RankSphere' Dashboard; Farben nie direkt, Status nie nur als Farbe.
+  Neues Icon = Lucide-Pfad in `Ui::ICONS`.
 - Daten von RankSphere sind fremde Daten: nur über `Insights\Value` lesen (Typ geprüft), escaped ausgeben, Links nur https.
 - Sicherheit (immer): Eingaben früh säubern, Ausgaben spät escapen, Nonce **und** Rechteprüfung, REST-Routen nie
   ohne `permission_callback`, SQL nur mit `$wpdb->prepare()`. Anfragen von RankSphere zusätzlich per HMAC –

@@ -34,6 +34,9 @@ WordPress-üblich: `{ "code": "ranksphere_…", "message": "…", "data": { "sta
 `ranksphere_not_connected`, `ranksphere_bad_signature`, `ranksphere_forbidden`, `ranksphere_not_found`,
 `ranksphere_invalid_content`, `ranksphere_seo_plugin_failed`.
 
+Antworten von RankSphere: ein `422`/`429` trägt `message` (Satz in der Sprache des Benutzers) – das Plugin zeigt ihn
+so an (`RankSphereClient::failure()`), alle anderen Fehler als eigenen Satz zum Statuscode.
+
 ## Routen in WordPress
 
 ### `GET /status` (M1)
@@ -149,6 +152,12 @@ Die Übersichtsseite und das Dashboard-Widget rendert der Server direkt, ohne ei
 | `POST /suggestions` | Vorschlag starten: `{ "url", "lang", "current": { "title", "description" }, "content" }` → `{ "status": "pending" }` oder `failed` mit `error` (kein KI-Zugang, Abo abgelaufen, mehr als 20 je Stunde) |
 | `GET /suggestions?url=…` | Stand: `none`, `pending`, `done` mit `title`/`description` (ein Feld, das RankSphere' Prüfung nicht besteht, ist `null`) und `why`, `failed` mit `error` |
 | `POST /changes` | in WordPress übernommene Änderung: `{ "url", "post_id", "before", "after", "history_id", "by" }` → `201`; erscheint im Änderungsprotokoll, Rückgängig auch aus RankSphere |
+| `GET /texts?lang=…` | Seite „Texte“ (ab 1.0.0-alpha.6): `{ "types": [ { key, label, hint, required: [ { key, label } ] } ], "texts": [ Text-Zeile wie in `/overview` ], "blocked": "…" \| null, "url" }` – `blocked` sagt, warum gerade kein Text starten kann (kein KI-Zugang, Abo) |
+| `POST /texts` | Text starten: `{ "type", "topic", "target_page": "/pfad/", "notes", "required": { key: "…" }, "by": "Anzeigename", "lang" }` → `201 { "id" }`; `422`/`429` mit `message` (gesperrt, mehr als 10 je Stunde und Website). Die KI-Kosten trägt, wer die Website verbunden hat |
+| `GET /texts/{id}` | Stand: Text-Zeile + `topic`, `error`, `html` (Markdown → HTML, eingegebenes HTML escaped, `[[…]]` in `<mark>`), `seo_title`, `meta_description`, `questions`, `answers`, `review` `{ score, passed, issues: [ { priority, problem, fix } ] }` \| null, `post_type`, `default_post_type` |
+| `POST /texts/{id}/answers` | `{ "answers": { "Frage": "Antwort" } }` → RankSphere schreibt neu (`409`, solange er noch schreibt) |
+| `GET /texts/{id}/draft?post_type=…` | Payload wie `POST /drafts` (Block-Markup, SEO-Felder); ein Text mit gespeichertem Beitragstyp behält ihn. Das Plugin legt den Entwurf mit dem aktuellen Benutzer als Autor an |
+| `POST /texts/{id}/pushed` | `{ "post_id", "edit_url", "post_type" }` – der Entwurf liegt in WordPress |
 | `POST /crawler-visits` | `{ "day": "2026-10-04", "visits": [ { "bot": "GPTBot", "path": "/", "hits": 12 } ] }` (M5) |
 | `POST /disconnect` | die Website hat die Verbindung getrennt: `{ "reason": "admin" \| "revoked" \| "user_deleted" }` (M1) |
 
@@ -167,7 +176,8 @@ Transient (je Sprache und Projekt), eine fehlgeschlagene 2 Minuten.
   "data_problems": ["…"],
   "tasks": [ { "title": "…", "why": "…", "area": "…", "impact": "high|medium|low", "state": "open|not_fixed", "url": "…" } ],
   "tasks_total": 7,
-  "texts": [ { "title": "…", "type": "…", "state": "…", "open_questions": 2, "wordpress_post_id": 42 | null, "url": "…" } ],
+  "texts": [ { "id": 7, "title": "…", "type": "…", "status": "pending|done|failed", "state": "…", "tone": "good|watch|act|neutral",
+               "open_questions": 2, "wordpress_post_id": 42 | null, "by": "…", "created_at": "…", "url": "…" } ],
   "texts_url": "…",
   "voice": { "address": "Sie", "voice": "…", "do": [], "dont": [], "preferred_terms": [], "taboo_words": [] } | null,
   "voice_url": "…" }

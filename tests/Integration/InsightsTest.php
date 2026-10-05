@@ -138,7 +138,8 @@ final class InsightsTest extends RankSphereTestCase {
 		self::assertStringContainsString( 'Titel &lt;script&gt;', $html, 'escaped' );
 		self::assertStringNotContainsString( '<script>', $html );
 		self::assertStringContainsString( '2 more steps in RankSphere', $html );
-		self::assertStringContainsString( 'Edit draft', $html, 'the WordPress draft of the text' );
+		self::assertStringContainsString( 'page=ranksphere-texts&amp;text=7', $html, 'texts open here in WordPress' );
+		self::assertStringContainsString( 'rs-pill-watch', $html, 'the state in its tone' );
 		self::assertStringContainsString( 'Kurze Sätze', $html );
 		self::assertStringNotContainsString( 'javascript:', $html, 'only https links' );
 
@@ -211,7 +212,7 @@ final class InsightsTest extends RankSphereTestCase {
 
 		$html = self::text( $this->dispatch( self::insights_request( $post ) ), 'html' );
 
-		self::assertStringContainsString( 'https://ranksphere.test/projects/muster/content?draft=7', $html );
+		self::assertStringContainsString( 'page=ranksphere-texts&#038;text=7', $html, 'the text page here in WordPress' );
 		self::assertSame( array(), $this->asked, 'no figures for a draft' );
 	}
 
@@ -321,10 +322,12 @@ final class InsightsTest extends RankSphereTestCase {
 			'tasks_total'   => 3,
 			'texts'         => array(
 				array(
+					'id'                => 7,
 					'title'             => 'Wartung für Ihre Anlage',
 					'type'              => 'Leistungsseite',
 					'state'             => 'Fertig',
 					'open_questions'    => 0,
+					'tone'              => 'watch',
 					'wordpress_post_id' => $this->draft,
 					'url'               => 'https://ranksphere.test/projects/muster/content?draft=7',
 				),

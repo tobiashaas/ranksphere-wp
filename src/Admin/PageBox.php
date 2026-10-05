@@ -71,7 +71,7 @@ final class PageBox {
 	 */
 	public function render( WP_Post $post ): void {
 		printf(
-			'<div class="ranksphere ranksphere-page-box" data-ranksphere-page="%1$d" data-error="%2$s"><p class="ranksphere-muted">%3$s</p></div>',
+			'<div class="ranksphere ranksphere-page-box" data-ranksphere-page="%1$d" data-error="%2$s"><p class="rs-muted">%3$s</p></div>',
 			(int) $post->ID,
 			esc_attr__( 'RankSphere could not be reached.', 'ranksphere' ),
 			esc_html__( 'Loading data from RankSphere …', 'ranksphere' )
@@ -255,10 +255,11 @@ final class PageBox {
 			);
 		}
 
-		$html = '<div class="notice notice-success inline"><p>'
-			. esc_html( 'title' === $field ? __( 'SEO title saved.', 'ranksphere' ) : __( 'Meta description saved.', 'ranksphere' ) )
-			. ' ' . esc_html__( 'Reload the page before you save the post – otherwise the SEO plugin\'s fields still hold the old value and saving would bring it back.', 'ranksphere' )
-			. '</p><p><button type="button" class="button button-small" data-ranksphere-reload>' . esc_html__( 'Reload page', 'ranksphere' ) . '</button></p></div>';
+		$html = Ui::note(
+			'good',
+			( 'title' === $field ? __( 'SEO title saved.', 'ranksphere' ) : __( 'Meta description saved.', 'ranksphere' ) )
+			. ' ' . __( 'Reload the page before you save the post – otherwise the SEO plugin\'s fields still hold the old value and saving would bring it back.', 'ranksphere' )
+		) . '<p><button type="button" class="rs-button rs-button-small rs-button-outline" data-ranksphere-reload>' . Ui::icon( 'refresh' ) . esc_html__( 'Reload page', 'ranksphere' ) . '</button></p>';
 
 		return new WP_REST_Response(
 			array(
@@ -279,7 +280,7 @@ final class PageBox {
 
 		$html = match ( true ) {
 			$state instanceof \WP_Error => '<p>' . esc_html( OverviewPage::error_message( (string) $state->get_error_code() ) ) . '</p>' . self::suggest_button( __( 'Try again', 'ranksphere' ) ),
-			'pending' === $status        => '<p class="ranksphere-muted"><span class="spinner is-active ranksphere-spinner"></span>' . esc_html__( 'RankSphere is writing a suggestion …', 'ranksphere' ) . '</p>',
+			'pending' === $status        => '<p class="rs-verdict rs-muted">' . Ui::icon( 'loader', 'ranksphere-spinner' ) . esc_html__( 'RankSphere is writing a suggestion …', 'ranksphere' ) . '</p>',
 			'failed' === $status         => '<p>' . esc_html( '' !== Value::text( $state, 'error' ) ? Value::text( $state, 'error' ) : __( 'The suggestion could not be created.', 'ranksphere' ) ) . '</p>' . self::suggest_button( __( 'Try again', 'ranksphere' ) ),
 			'done' === $status           => self::proposal( $post, $state ),
 			default                      => self::suggestion_intro(),
@@ -305,7 +306,7 @@ final class PageBox {
 			'title'       => __( 'SEO title', 'ranksphere' ),
 			'description' => __( 'Meta description', 'ranksphere' ),
 		);
-		$html    = '' !== Value::text( $state, 'why' ) ? '<p class="ranksphere-muted">' . esc_html( Value::text( $state, 'why' ) ) . '</p>' : '';
+		$html    = '' !== Value::text( $state, 'why' ) ? Ui::verdict( 'neutral', Value::text( $state, 'why' ) ) : '';
 
 		foreach ( $labels as $field => $label ) {
 			$value = Value::text( $state, $field );
@@ -318,20 +319,20 @@ final class PageBox {
 			$html .= '<div class="ranksphere-proposal"><h4>' . esc_html( $label ) . '</h4>'
 				. '<p class="ranksphere-before"><span class="screen-reader-text">' . esc_html__( 'Now:', 'ranksphere' ) . ' </span>' . esc_html( $now ) . '</p>'
 				. '<p class="ranksphere-after"><span class="screen-reader-text">' . esc_html__( 'Suggestion:', 'ranksphere' ) . ' </span>' . esc_html( $value ) . '</p>'
-				. '<p class="ranksphere-proposal-actions"><span class="ranksphere-muted">' . esc_html(
+				. '<p class="ranksphere-proposal-actions"><span class="rs-muted">' . esc_html(
 					/* translators: %d: number of characters. */
 					sprintf( _n( '%d character', '%d characters', mb_strlen( $value ), 'ranksphere' ), mb_strlen( $value ) )
-				) . '</span> <button type="button" class="button button-small" data-ranksphere-apply="' . esc_attr( $field ) . '" data-value="' . esc_attr( $value ) . '">' . esc_html__( 'Apply', 'ranksphere' ) . '</button></p></div>';
+				) . '</span> <button type="button" class="rs-button rs-button-small" data-ranksphere-apply="' . esc_attr( $field ) . '" data-value="' . esc_attr( $value ) . '">' . esc_html__( 'Apply', 'ranksphere' ) . '</button></p></div>';
 		}
 
-		return $html . self::suggest_button( __( 'New suggestion', 'ranksphere' ), 'button-link' );
+		return $html . self::suggest_button( __( 'New suggestion', 'ranksphere' ), 'rs-button-link' );
 	}
 
 	/**
 	 * Before any suggestion: what it does, and the button.
 	 */
 	private static function suggestion_intro(): string {
-		return '<p class="ranksphere-muted">' . esc_html__( 'RankSphere suggests both from the searches this page is found with, its text and your company\'s voice. Nothing changes until you apply it.', 'ranksphere' ) . '</p>'
+		return '<p class="rs-muted">' . esc_html__( 'RankSphere suggests both from the searches this page is found with, its text and your company\'s voice. Nothing changes until you apply it.', 'ranksphere' ) . '</p>'
 			. self::suggest_button( __( 'Create suggestion', 'ranksphere' ) );
 	}
 
@@ -341,8 +342,8 @@ final class PageBox {
 	 * @param string $label   Button text.
 	 * @param string $classes CSS classes.
 	 */
-	private static function suggest_button( string $label, string $classes = 'button' ): string {
-		return '<p><button type="button" class="' . esc_attr( $classes ) . '" data-ranksphere-suggest>' . esc_html( $label ) . '</button></p>';
+	private static function suggest_button( string $label, string $classes = 'rs-button rs-button-small' ): string {
+		return '<p><button type="button" class="' . esc_attr( $classes ) . '" data-ranksphere-suggest>' . ( 'rs-button-link' === $classes ? '' : Ui::icon( 'sparkles' ) ) . esc_html( $label ) . '</button></p>';
 	}
 
 	/**
@@ -385,9 +386,9 @@ final class PageBox {
 
 		if ( 'publish' !== $post->post_status ) {
 			return ( '' !== $text
-				? '<p>' . esc_html__( 'This draft was written in RankSphere.', 'ranksphere' ) . '</p>' . self::link( $text, __( 'Text and review in RankSphere', 'ranksphere' ) )
+				? '<p>' . esc_html__( 'This draft was written in RankSphere.', 'ranksphere' ) . '</p>' . self::link( $text, __( 'Text, questions and review', 'ranksphere' ) )
 				: '' )
-				. '<p class="ranksphere-muted">' . esc_html__( 'Google figures appear once the page is published and found.', 'ranksphere' ) . '</p>';
+				. Ui::note( 'neutral', __( 'Google figures appear once the page is published and found.', 'ranksphere' ) );
 		}
 
 		$permalink = get_permalink( $post );
@@ -399,7 +400,7 @@ final class PageBox {
 
 		return $this->figures( $entry['data'] )
 			. '<h4>' . esc_html__( 'Title and description', 'ranksphere' ) . '</h4><div data-ranksphere-suggestion>' . self::suggestion_intro() . '</div>'
-			. ( '' !== $text ? self::link( $text, __( 'Text and review in RankSphere', 'ranksphere' ) ) : '' );
+			. ( '' !== $text ? self::link( $text, __( 'Text, questions and review', 'ranksphere' ) ) : '' );
 	}
 
 	/**
@@ -417,21 +418,14 @@ final class PageBox {
 		if ( null === $search ) {
 			$html .= '<p>' . esc_html__( 'No Google data for this page in the last 28 days.', 'ranksphere' ) . '</p>';
 		} else {
-			$clicks   = Value::number( $search, 'clicks' ) ?? 0.0;
-			$change   = Value::change( $clicks, Value::number( $search, 'previous_clicks' ) );
-			$position = Value::number( $search, 'position' );
-			$rows     = array(
-				__( 'Clicks', 'ranksphere' )           => Value::count( $clicks ) . ( '' !== $change ? ' (' . $change . ')' : '' ),
-				__( 'Impressions', 'ranksphere' )      => Value::count( Value::number( $search, 'impressions' ) ?? 0.0 ),
-				__( 'Average position', 'ranksphere' ) => null === $position ? '–' : number_format_i18n( $position, 1 ),
-			);
-			$html    .= '<p class="ranksphere-muted">' . esc_html__( 'Google, last 28 days', 'ranksphere' ) . '</p><table class="ranksphere-facts">';
-
-			foreach ( $rows as $label => $value ) {
-				$html .= '<tr><th scope="row">' . esc_html( $label ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
-			}
-
-			$html .= '</table>';
+			$clicks      = Value::number( $search, 'clicks' );
+			$impressions = Value::number( $search, 'impressions' );
+			$position    = Value::number( $search, 'position' );
+			$html       .= '<p class="rs-muted">' . esc_html__( 'Google, last 28 days', 'ranksphere' ) . '</p><div class="rs-mini-figures">'
+				. self::mini( __( 'Clicks', 'ranksphere' ), 'pointer', null === $clicks ? '–' : Value::count( $clicks ), Ui::delta( $clicks, Value::number( $search, 'previous_clicks' ) ) )
+				. self::mini( __( 'Impressions', 'ranksphere' ), 'eye', null === $impressions ? '–' : Value::count( $impressions ), Ui::delta( $impressions, Value::number( $search, 'previous_impressions' ) ) )
+				. self::mini( __( 'Average position', 'ranksphere' ), 'target', null === $position ? '–' : number_format_i18n( $position, 1 ), Ui::delta( $position, Value::number( $search, 'previous_position' ), true, true ) )
+				. '</div>';
 		}
 
 		if ( array() !== $queries ) {
@@ -440,7 +434,7 @@ final class PageBox {
 			foreach ( $queries as $query ) {
 				$position = Value::number( $query, 'position' );
 				$html    .= '<li><span>' . esc_html( Value::text( $query, 'query' ) ) . '</span>'
-					. ( null === $position ? '' : ' <span class="ranksphere-muted">' . esc_html(
+					. ( null === $position ? '' : ' <span class="rs-muted">' . esc_html(
 						/* translators: %s: average position, e.g. 4.2. */
 						sprintf( __( 'Pos. %s', 'ranksphere' ), number_format_i18n( $position, 1 ) )
 					) . '</span>' )
@@ -454,17 +448,19 @@ final class PageBox {
 			$html .= '<h4>' . esc_html__( 'Website check', 'ranksphere' ) . '</h4><ul class="ranksphere-findings">';
 
 			foreach ( $findings as $finding ) {
-				$html .= '<li class="ranksphere-severity-' . esc_attr( sanitize_key( Value::text( $finding, 'severity' ) ) ) . '">' . esc_html( Value::text( $finding, 'title' ) ) . '</li>';
+				$severity = Value::text( $finding, 'severity' );
+				$html    .= '<li>' . Ui::icon( 'error' === $severity ? 'triangle-alert' : ( 'warning' === $severity ? 'circle-alert' : 'circle-dot' ), 'error' === $severity ? 'rs-tone-act' : ( 'warning' === $severity ? 'rs-tone-watch' : 'rs-tone-neutral' ) ) . '<span>' . esc_html( Value::text( $finding, 'title' ) ) . '</span></li>';
 			}
 
 			$html .= '</ul>';
 		}
 
 		if ( $broken > 0 ) {
-			$html .= '<p>' . esc_html(
+			$html .= Ui::note(
+				'watch',
 				/* translators: %d: number of dead addresses with backlinks. */
 				sprintf( _n( 'Backlinks point to %d dead address of this page.', 'Backlinks point to %d dead addresses of this page.', $broken, 'ranksphere' ), $broken )
-			) . '</p>';
+			);
 		}
 
 		return $html . self::link( Value::link( $data, 'url' ), __( 'This page in RankSphere', 'ranksphere' ) );
@@ -483,25 +479,28 @@ final class PageBox {
 			return '';
 		}
 
-		return add_query_arg( 'draft', $match[1], untrailingslashit( $project_url ) . '/content' );
+		return TextsPage::url( (int) $match[1] );
 	}
 
 	/**
-	 * A link into RankSphere as HTML.
+	 * A link in its own line (into RankSphere: new tab).
 	 *
 	 * @param string $url   The address.
 	 * @param string $label The link text.
 	 */
 	private static function link( string $url, string $label ): string {
-		if ( '' === $url ) {
-			return '';
-		}
+		return '' === $url ? '' : '<p>' . Ui::link( $url, $label ) . '</p>';
+	}
 
-		return sprintf(
-			'<p><a href="%1$s" target="_blank" rel="noopener">%2$s<span class="screen-reader-text"> %3$s</span></a></p>',
-			esc_url( $url ),
-			esc_html( $label ),
-			esc_html__( '(opens in a new tab)', 'ranksphere' )
-		);
+	/**
+	 * One small figure.
+	 *
+	 * @param string $label Its name.
+	 * @param string $icon  Icon key.
+	 * @param string $value Formatted value.
+	 * @param string $delta The change (HTML).
+	 */
+	private static function mini( string $label, string $icon, string $value, string $delta ): string {
+		return '<div class="rs-mini"><span class="rs-mini-label">' . Ui::icon( $icon ) . esc_html( $label ) . '</span><span class="rs-figure">' . esc_html( $value ) . '</span>' . $delta . '</div>';
 	}
 }

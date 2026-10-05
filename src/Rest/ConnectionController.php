@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace RankSphere\Rest;
 
+use RankSphere\Content\Texts;
 use RankSphere\Connection\Connection;
 use RankSphere\Connection\ConnectionStore;
 use RankSphere\Connection\Disconnector;
@@ -231,25 +232,17 @@ final class ConnectionController {
 	}
 
 	/**
-	 * Post types a text from RankSphere can become: public ones with an editor, which the current user
-	 * (RankSphere's) may create – custom ones like "Services" included, with the site's labels.
+	 * Post types a text from RankSphere can become (for RankSphere's user, who calls the status).
 	 *
 	 * @return list<array{name: string, label: string}>
 	 */
 	private static function post_types(): array {
 		$types = array();
 
-		foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $type ) {
-			$create = $type->cap->create_posts ?? null;
-			$label  = $type->labels->singular_name ?? null;
-
-			if ( 'attachment' === $type->name || ! $type->show_ui || ! post_type_supports( $type->name, 'editor' ) || ! is_string( $create ) || ! current_user_can( $create ) ) {
-				continue;
-			}
-
+		foreach ( Texts::post_types() as $name => $label ) {
 			$types[] = array(
-				'name'  => $type->name,
-				'label' => is_string( $label ) && '' !== $label ? $label : $type->name,
+				'name'  => $name,
+				'label' => $label,
 			);
 		}
 
