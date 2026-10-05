@@ -58,7 +58,7 @@ final class RankSphereClient {
 		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( $status < 200 || $status > 299 || ! is_array( $data ) ) {
-			return new \WP_Error( 'ranksphere_http_' . $status, 'RankSphere answered with status ' . $status . '.', array( 'status' => $status ) );
+			return self::failure( $status, $data );
 		}
 
 		return $data;
@@ -106,8 +106,8 @@ final class RankSphereClient {
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
 
-		if ( 200 !== $status || ! is_array( $data ) ) {
-			return new \WP_Error( 'ranksphere_http_' . $status, 'RankSphere answered with status ' . $status . '.', array( 'status' => $status ) );
+		if ( $status < 200 || $status > 299 || ! is_array( $data ) ) {
+			return self::failure( $status, $data );
 		}
 
 		return $data;
@@ -149,6 +149,26 @@ final class RankSphereClient {
 					RequestVerifier::HEADER_SIGNATURE => $signature,
 				),
 				'body'       => $body,
+			)
+		);
+	}
+
+	/**
+	 * A failed answer. RankSphere's own sentence (`message` of a 422 or 429 – no AI access, read-only,
+	 * too many) stays in the error's data for the page to show; the code says the status.
+	 *
+	 * @param int   $status HTTP status.
+	 * @param mixed $data   Decoded body.
+	 */
+	private static function failure( int $status, mixed $data ): \WP_Error {
+		$message = is_array( $data ) && is_string( $data['message'] ?? null ) && in_array( $status, array( 422, 429 ), true ) ? $data['message'] : '';
+
+		return new \WP_Error(
+			'ranksphere_http_' . $status,
+			'RankSphere answered with status ' . $status . '.',
+			array(
+				'status'  => $status,
+				'message' => $message,
 			)
 		);
 	}

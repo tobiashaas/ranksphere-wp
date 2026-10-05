@@ -82,7 +82,7 @@ Build-Schritt, weniger Code beim Kunden:
 
 - **Überblick:** Urteil, Klicks/Impressionen mit Veränderung, Position, Nennung in KI-Antworten, Datenprobleme.
 - **Nächste Schritte:** die fünf wichtigsten offenen Aufgaben, der Rest als Link nach RankSphere.
-- **Texte:** die letzten Texte mit Stand; „Entwurf bearbeiten“, wenn der WordPress-Entwurf existiert.
+- **Texte:** die letzten Texte mit Stand, Link auf die Seite „Texte“; „Neuer Text“.
 - **So schreiben wir:** Anrede, Tonalität, So / So nicht, bevorzugte Begriffe, Tabu-Wörter.
 - **Box im Editor** (klassische Meta-Box, seitlich): erscheint im Block- **und** im klassischen Editor, auch für eigene
   Beitragstypen und Seiten, die mit Page-Buildern gebaut sind. Klicks, Impressionen, Position, Suchanfragen,
@@ -97,6 +97,21 @@ Transient, je Sprache und Projekt; der Browser spricht nur mit WordPress. Alles 
 **Vorschlag erstellen** (ab 1.0.0-alpha.5): in der Box SEO-Titel und Meta-Beschreibung aus den echten Suchanfragen der
 Seite, ihrem Text und der Tonalität – geschrieben und geprüft in RankSphere (Job, Länge, Tabu-Wörter), Vorher → Nachher,
 „Übernehmen“ je Feld über das SEO-Plugin mit Verlauf; RankSphere bekommt die Änderung fürs Protokoll.
+
+**Aussehen** (ab 1.0.0-alpha.6): wie das RankSphere-Dashboard – Kacheln (heller Rahmen mit Icon-Chip und Kopfzeile,
+weiße Innenfläche; der Fokus „Nächster Schritt“ ist eine Amber-Fläche), Markenblau, Status-Farben für gut/beobachten/
+handeln, Veränderung zum Zeitraum davor immer mit Pfeil, Zahl und Wort (nie nur Farbe). Bausteine in `Admin\Ui`
+(escaped, Ausgabe über `wp_kses` mit fester Liste), Tokens am Anfang von `assets/admin.css` (Werte aus RankSphere'
+`app.css`), Icons als Inline-SVG (Lucide, ISC). Nur in den eigenen Admin-Seiten, Widget und Box – kein globales CSS.
+
+**Texte** (ab 1.0.0-alpha.6, Menü „RankSphere“ → **Texte**, Recht `edit_posts`): Autoren starten einen Text (Textart,
+Thema, Fakten, optional die bestehende Seite), sehen den Stand, beantworten RankSphere' offene Fragen und speichern
+das Ergebnis als Entwurf – ohne RankSphere zu öffnen. Geschrieben und geprüft wird in RankSphere (dieselbe Pipeline wie
+dort, Job + Abfrage; die Seite lädt sich alle 8 s neu, solange er schreibt). Der Entwurf entsteht **hier**
+(`Content\Texts::save_draft()` → `Drafts::save()`) mit dem aktuellen Benutzer als Autor und nur als Beitragstyp, den er
+anlegen darf; danach meldet das Plugin ihn an RankSphere (`/texts/{id}/pushed`). Formulare über `admin-post.php` mit
+Nonce + Rechteprüfung, Hinweise je Benutzer als Transient. Das HTML des Texts kommt von RankSphere schon escaped und
+läuft zusätzlich durch `wp_kses_post`.
 
 **Übersetzung:** Quelltexte Englisch; Deutsch liegt als `languages/ranksphere-de_DE.l10n.php` bei (WordPress' PHP-Format
 ab 6.5), bis translate.wordpress.org übernimmt. `tests/Unit/TranslationsTest.php` prüft, dass jeder Text übersetzt ist.

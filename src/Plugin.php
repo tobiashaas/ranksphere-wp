@@ -13,6 +13,7 @@ use RankSphere\Admin\DashboardWidget;
 use RankSphere\Admin\OverviewPage;
 use RankSphere\Admin\PageBox;
 use RankSphere\Admin\SettingsPage;
+use RankSphere\Admin\TextsPage;
 use RankSphere\Connection\Revocation;
 use RankSphere\Lifecycle\Upgrader;
 use RankSphere\Content\PlaceholderLock;
@@ -48,6 +49,7 @@ final class Plugin {
 
 		if ( is_admin() ) {
 			( new OverviewPage() )->register();
+			( new TextsPage() )->register();
 			( new SettingsPage() )->register();
 			( new DashboardWidget() )->register();
 		}
