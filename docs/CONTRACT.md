@@ -121,6 +121,11 @@ Recht `edit_post` für diesen Beitrag. `GET` liefert die Felder dieses Beitrags 
 - Antwort `201` (neu) bzw. `200` (aktualisiert): Felder wie `/lookup` plus `"created": true|false`.
 - **Platzhalter-Sperre:** Enthält ein Entwurf von RankSphere noch `[[…]]` (fehlende Angaben), setzt das Plugin
   „Veröffentlichen“/„Planen“ zurück auf Entwurf und erklärt das im Editor. Kategorien/Schlagwörter folgen.
+- **`revises`** (ab 1.0.0-alpha.7, optional): der Text ist für diesen bestehenden Beitrag (Recht `edit_post` darauf, sonst
+  `403 ranksphere_forbidden`). Unveröffentlicht → der Text kommt in diesen Beitrag (Autor bleibt, der Inhalt davor wird
+  WordPress-Revision). Veröffentlicht/geplant/privat → das Original bleibt unberührt; der Text wird ein eigener Entwurf
+  desselben Typs mit `_ranksphere_revises` = Original, den der Autor im Editor mit „In Original übernehmen“ übernimmt.
+  Die Antwort trägt dann `post_id` des Entwurfs bzw. Originals.
 
 `post_types` (ab 1.0.0-alpha.5): öffentliche Typen mit Editor, die der Benutzer von RankSphere anlegen darf – auch
 eigene wie „Leistungen“, mit dem Namen der Website. RankSphere fragt damit beim ersten Senden eines Textes, als was er
@@ -135,6 +140,15 @@ angelegt wird (`POST /drafts` mit diesem `post_type`); ohne die Liste (ältere P
 das SEO-Plugin mit Verlauf (`source: suggestion`) und meldet die Änderung an RankSphere (`POST /changes`); der Hinweis
 danach bittet, die Seite neu zu laden, bevor der Beitrag gespeichert wird (sonst schreiben die Felder des SEO-Plugins im
 Editor den alten Wert zurück).
+
+### `GET /editable-posts?post_type=…&search=…`, `POST /revisions/applied` (ab 1.0.0-alpha.7, nur eingeloggte Benutzer)
+
+`editable-posts`: Beiträge eines Typs, die der Benutzer bearbeiten darf (`perm: editable`, neueste Änderung zuerst, 30)
+für „bestehenden Beitrag überarbeiten“ auf der Seite „Texte“ – `{ "posts": [ { "id", "title" } ] }`.
+`revisions/applied` `{ "original", "revision", "before" }`: der Block-Editor hat das Original mit der Überarbeitung
+gespeichert (Recht `edit_post` auf beide, `revision` muss `_ranksphere_revises` = `original` tragen). SEO-Felder der
+Überarbeitung folgen (SEO-Verlauf `source: revision`), `before` ist die WordPress-Revision mit dem Inhalt davor (Verlauf
+→ WordPress' Vergleich/Wiederherstellen). Der klassische Editor meldet dasselbe über versteckte Felder im Formular.
 
 ### `GET /page-insights?post_id=…` (M4, nur für eingeloggte Benutzer – nicht für RankSphere)
 
@@ -153,10 +167,14 @@ Die Übersichtsseite und das Dashboard-Widget rendert der Server direkt, ohne ei
 | `GET /suggestions?url=…` | Stand: `none`, `pending`, `done` mit `title`/`description` (ein Feld, das RankSphere' Prüfung nicht besteht, ist `null`) und `why`, `failed` mit `error` |
 | `POST /changes` | in WordPress übernommene Änderung: `{ "url", "post_id", "before", "after", "history_id", "by" }` → `201`; erscheint im Änderungsprotokoll, Rückgängig auch aus RankSphere |
 | `GET /texts?lang=…` | Seite „Texte“ (ab 1.0.0-alpha.6): `{ "types": [ { key, label, hint, required: [ { key, label } ] } ], "texts": [ Text-Zeile wie in `/overview` ], "blocked": "…" \| null, "url" }` – `blocked` sagt, warum gerade kein Text starten kann (kein KI-Zugang, Abo) |
-| `POST /texts` | Text starten: `{ "type", "topic", "target_page": "/pfad/", "notes", "required": { key: "…" }, "by": "Anzeigename", "lang" }` → `201 { "id" }`; `422`/`429` mit `message` (gesperrt, mehr als 10 je Stunde und Website). Die KI-Kosten trägt, wer die Website verbunden hat |
-| `GET /texts/{id}` | Stand: Text-Zeile + `topic`, `error`, `html` (Markdown → HTML, eingegebenes HTML escaped, `[[…]]` in `<mark>`), `seo_title`, `meta_description`, `questions`, `answers`, `review` `{ score, passed, issues: [ { priority, problem, fix } ] }` \| null, `post_type`, `default_post_type` |
-| `POST /texts/{id}/answers` | `{ "answers": { "Frage": "Antwort" } }` → RankSphere schreibt neu (`409`, solange er noch schreibt) |
-| `GET /texts/{id}/draft?post_type=…` | Payload wie `POST /drafts` (Block-Markup, SEO-Felder); ein Text mit gespeichertem Beitragstyp behält ihn. Das Plugin legt den Entwurf mit dem aktuellen Benutzer als Autor an |
+| `POST /texts` | Text starten: `{ "type", "topic", "post_type", "notes", "required": { key: "…" }, "by": "Anzeigename", "lang", "source": { post_id, post_type, status, title, path, content } , "site_pages": [ { title, path } ] }` → `201 { "id" }`; `422`/`429` mit `message` (gesperrt, mehr als 10 je Stunde und Website). Die KI-Kosten trägt, wer die Website verbunden hat. `source` (ab alpha.7): der bestehende Beitrag – sein Text (max. 12 000 Zeichen, auch von Entwürfen) gilt als Aussage des Unternehmens. `site_pages` (max. 200): veröffentlichte Seiten und Beiträge – die einzigen erlaubten internen Linkziele. Ältere Plugins senden `target_page` |
+| `GET /texts/ideas?lang=…` | (ab alpha.7) `{ "ideas": [ { title, why, area, impact, type, type_label, topic, page } ] }` – offene Aufgaben, die einen Text brauchen; das Plugin hält sie 10 Minuten |
+| `GET /texts/{id}` | Stand: Text-Zeile + `topic`, `error`, `html` (Markdown → HTML, eingegebenes HTML escaped, `[[…]]` in `<mark>`), `seo_title`, `meta_description`, `questions`, `answers`, `review` `{ score, passed, issues: [ { priority, problem, fix } ] }` \| null, `post_type`, `default_post_type`, `source` `{ post_id, title, path }` \| null, `versions` `[ { number, reason, label, by, score, created_at } ]` (neueste = aktuelle zuerst) |
+| `POST /texts/{id}/answers` | `{ "answers": { "Frage": "Antwort" }, "by" }` → RankSphere schreibt neu (`409`, solange er noch schreibt) |
+| `POST /texts/{id}/notes` | (ab alpha.7) `{ "note": "kürzer", "by" }` → RankSphere überarbeitet die aktuelle Fassung mit dem Hinweis; `422`/`429` wie beim Starten |
+| `GET /texts/{id}/versions/{n}` | (ab alpha.7) eine Version: `number`, `label`, `by`, `score`, `created_at`, `html`, `seo_title`, `meta_description`, `questions` |
+| `POST /texts/{id}/restore` | (ab alpha.7) `{ "version": n, "by" }` → die Version wird wieder die aktuelle (ohne KI, selbst eine neue Version) → `{ "version": neue Nummer }` |
+| `GET /texts/{id}/draft?post_type=…` | Payload wie `POST /drafts` (Block-Markup, SEO-Felder, `revises` bei einem Text für einen bestehenden Beitrag); ein Text mit gespeichertem Beitragstyp behält ihn, einer für einen bestehenden Beitrag bekommt dessen Typ. Das Plugin legt den Entwurf mit dem aktuellen Benutzer als Autor an |
 | `POST /texts/{id}/pushed` | `{ "post_id", "edit_url", "post_type" }` – der Entwurf liegt in WordPress |
 | `POST /crawler-visits` | `{ "day": "2026-10-04", "visits": [ { "bot": "GPTBot", "path": "/", "hits": 12 } ] }` (M5) |
 | `POST /disconnect` | die Website hat die Verbindung getrennt: `{ "reason": "admin" \| "revoked" \| "user_deleted" }` (M1) |
@@ -177,7 +195,7 @@ Transient (je Sprache und Projekt), eine fehlgeschlagene 2 Minuten.
   "tasks": [ { "title": "…", "why": "…", "area": "…", "impact": "high|medium|low", "state": "open|not_fixed", "url": "…" } ],
   "tasks_total": 7,
   "texts": [ { "id": 7, "title": "…", "type": "…", "status": "pending|done|failed", "state": "…", "tone": "good|watch|act|neutral",
-               "open_questions": 2, "wordpress_post_id": 42 | null, "by": "…", "created_at": "…", "url": "…" } ],
+               "open_questions": 2, "wordpress_post_id": 42 | null, "source_post_id": 12 | null, "by": "…", "created_at": "…", "url": "…" } ],
   "texts_url": "…",
   "voice": { "address": "Sie", "voice": "…", "do": [], "dont": [], "preferred_terms": [], "taboo_words": [] } | null,
   "voice_url": "…" }

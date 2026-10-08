@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace RankSphere;
 
+use RankSphere\Admin\ApplyRevision;
 use RankSphere\Admin\DashboardWidget;
 use RankSphere\Admin\OverviewPage;
 use RankSphere\Admin\PageBox;
@@ -41,6 +42,7 @@ final class Plugin {
 		( new NativeOutput() )->register();
 		// Its REST route answers outside the admin too; box and script only hook admin actions.
 		( new PageBox() )->register();
+		( new ApplyRevision() )->register();
 
 		// Builds from RankSphere update themselves; the WordPress.org build has no Updates directory.
 		if ( is_readable( __DIR__ . '/Updates/Updater.php' ) ) {

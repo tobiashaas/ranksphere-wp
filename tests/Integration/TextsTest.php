@@ -39,9 +39,34 @@ final class TextsTest extends RankSphereTestCase {
 
 		$this->asked   = array();
 		$this->answers = array(
-			'/api/wordpress/v1/texts'         => self::overview(),
-			'/api/wordpress/v1/texts/7'       => self::written(),
-			'/api/wordpress/v1/texts/7/draft' => array(
+			'/api/wordpress/v1/texts'              => self::overview(),
+			'/api/wordpress/v1/texts/7'            => self::written(),
+			'/api/wordpress/v1/texts/ideas'        => array(
+				'ideas' => array(
+					array(
+						'title'      => 'Eigene Seite zu „heizung warten“',
+						'why'        => '300 × gesehen, aber keine Seite passt.',
+						'area'       => 'Bei Google',
+						'impact'     => 'medium',
+						'type'       => 'landing',
+						'type_label' => 'Leistungsseite',
+						'topic'      => 'heizung warten',
+						'page'       => null,
+					),
+				),
+			),
+			'/api/wordpress/v1/texts/7/versions/1' => array(
+				'number'           => 1,
+				'label'            => 'Erster Entwurf',
+				'by'               => 'Anna',
+				'score'            => 71,
+				'created_at'       => '2026-10-05T08:00:00+00:00',
+				'html'             => '<p>Die erste Fassung.</p>',
+				'seo_title'        => 'Alt | Muster',
+				'meta_description' => null,
+				'questions'        => array(),
+			),
+			'/api/wordpress/v1/texts/7/draft'      => array(
 				'ranksphere_id' => 'text-7',
 				'post_type'     => 'page',
 				'title'         => 'Heizungswartung für Ihr Haus',
@@ -126,7 +151,7 @@ final class TextsTest extends RankSphereTestCase {
 		self::assertStringContainsString( '<mark>[[Angabe fehlt: Wochentag]]</mark>', $html );
 		self::assertStringNotContainsString( '<script', $html );
 		self::assertStringContainsString( 'name="post_type"', $html );
-		self::assertMatchesRegularExpression( '/<option value="page" selected/', $html, 'the default for the kind of text' );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="page"', 'selected' ), 'the default for the kind of text' );
 		self::assertStringContainsString( '84', $html );
 
 		$this->answers['/api/wordpress/v1/texts/7'] = array( 'status' => 'pending' ) + self::written();
@@ -186,6 +211,188 @@ final class TextsTest extends RankSphereTestCase {
 		self::assertArrayNotHasKey( 'notes', $sent['body'], 'empty fields stay out' );
 	}
 
+	public function test_the_form_offers_the_post_type_and_an_existing_post_without_typing_an_address(): void {
+		$this->connect();
+		$page = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+				'post_title'  => 'Wartung & Service',
+			)
+		);
+		self::assertIsInt( $page );
+		$this->as_role( 'editor' );
+
+		$_GET['post'] = (string) $page;
+		$html         = $this->render( 0 );
+		unset( $_GET['post'] );
+
+		self::assertStringContainsString( 'name="post_type"', $html );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="page"', 'selected' ), 'the post type of the chosen post' );
+		self::assertTrue( self::has_tag( $html, 'input', 'value="existing"', 'checked' ) );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="' . $page . '"', 'selected' ) );
+		self::assertStringContainsString( '>Wartung &amp; Service</option>', $html );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="landing"', 'selected' ), 'a page presents a service' );
+		self::assertStringNotContainsString( 'target_page', $html, 'no address to type' );
+		self::assertStringContainsString( 'What to write about', $html );
+		self::assertMatchesRegularExpression( '/type=landing&(amp|#038);topic=heizung%20warten/', $html, 'an idea fills the form' );
+	}
+
+	public function test_only_posts_the_user_may_edit_are_offered(): void {
+		$this->connect();
+		$other = self::factory()->post->create(
+			array(
+				'post_status' => 'publish',
+				'post_title'  => 'Fremder Beitrag',
+			)
+		);
+		self::assertIsInt( $other );
+		$author = $this->as_role( 'contributor' );
+		$own    = self::factory()->post->create(
+			array(
+				'post_status' => 'draft',
+				'post_title'  => 'Eigener Entwurf',
+				'post_author' => $author,
+			)
+		);
+		self::assertIsInt( $own );
+
+		$titles = array_column( TextsPage::editable_posts( 'post' ), 'title', 'id' );
+
+		self::assertArrayHasKey( $own, $titles );
+		self::assertStringContainsString( 'Eigener Entwurf', $titles[ $own ] );
+		self::assertArrayNotHasKey( $other, $titles );
+		self::assertSame( array(), TextsPage::editable_posts( 'page' ), 'contributors write no pages' );
+	}
+
+	public function test_a_text_for_an_existing_post_sends_its_text_and_the_sites_pages(): void {
+		$this->connect();
+		$this->as_role( 'editor' );
+		$contact = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+				'post_title'  => 'Kontakt',
+			)
+		);
+		self::assertIsInt( $contact );
+		$page_id = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Wartung',
+				'post_content' => "<!-- wp:heading -->\n<h2>Ablauf</h2>\n<!-- /wp:heading -->\n<!-- wp:paragraph -->\n<p>Wir kommen [termin] einmal im Jahr.</p>\n<!-- /wp:paragraph -->",
+			)
+		);
+		self::assertIsInt( $page_id );
+		$page = get_post( $page_id );
+		self::assertInstanceOf( \WP_Post::class, $page );
+
+		add_shortcode( 'termin', static fn (): string => 'Termin' );
+		( new Texts() )->start(
+			array(
+				'type'  => 'landing',
+				'topic' => 'Wartung',
+			),
+			$page
+		);
+		remove_shortcode( 'termin' );
+
+		$body = $this->asked[0]['body'];
+		self::assertSame( 'page', $body['post_type'] ?? null );
+		self::assertIsArray( $body['source'] ?? null );
+		self::assertSame( $page->ID, $body['source']['post_id'] );
+		self::assertSame( '/?page_id=' . $page->ID, $body['source']['path'] ?? null );
+		self::assertIsString( $body['source']['content'] ?? null );
+		self::assertStringContainsString( '## Ablauf', $body['source']['content'] );
+		self::assertStringContainsString( 'Wir kommen einmal im Jahr.', (string) preg_replace( '/\s+/', ' ', $body['source']['content'] ) );
+		self::assertIsArray( $body['site_pages'] ?? null );
+		$paths = array_column( $body['site_pages'], 'path' );
+		self::assertContains( '/?page_id=' . $contact, $paths );
+		self::assertNotContains( '/?page_id=' . $page->ID, $paths, 'not a link to itself' );
+	}
+
+	public function test_a_text_for_a_published_page_is_saved_as_revision_next_to_it(): void {
+		$this->connect();
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Wartung',
+				'post_content' => '<p>Live.</p>',
+			)
+		);
+		self::assertIsInt( $page );
+		$this->as_role( 'editor' );
+		$this->answers['/api/wordpress/v1/texts/7']                  = array(
+			'source' => array(
+				'post_id' => $page,
+				'title'   => 'Wartung',
+				'path'    => '/wartung/',
+			),
+		) + self::written();
+		$this->answers['/api/wordpress/v1/texts/7/draft']['revises'] = $page;
+
+		$html = $this->render( 7 );
+		self::assertStringContainsString( 'Save as revision', $html );
+		self::assertStringContainsString( 'stays as it is', $html );
+		self::assertStringNotContainsString( '<select id="rs-post-type"', $html, 'the type is the page\'s' );
+
+		$saved = ( new Texts() )->save_draft( 7, 'page' );
+
+		self::assertIsArray( $saved );
+		self::assertSame( 'revision', $saved['mode'] ?? null );
+		self::assertSame( '<p>Live.</p>', get_post( $page )->post_content ?? null );
+		self::assertSame( $page, \RankSphere\Content\Drafts::meta_int( $saved['post_id'], \RankSphere\Content\Drafts::REVISES_META ) );
+	}
+
+	public function test_versions_can_be_seen_and_a_note_revises_the_text(): void {
+		$this->connect();
+		$this->as_role( 'author' );
+
+		$html = $this->render( 7 );
+		self::assertStringContainsString( 'name="note"', $html );
+		self::assertStringContainsString( 'Nachgebessert: „kürzer“', $html );
+		self::assertStringContainsString( 'version=1', $html );
+
+		$_GET['version'] = '1';
+		$old             = $this->render( 7 );
+		unset( $_GET['version'] );
+		self::assertStringContainsString( 'Die erste Fassung.', $old );
+		self::assertStringContainsString( 'Restore this version', $old );
+		self::assertStringContainsString( 'Alt | Muster', $old );
+
+		( new Texts() )->note( 7, 'Bitte kürzer.' );
+		$note = array_values( array_filter( $this->asked, static fn ( array $request ): bool => str_ends_with( $request['path'], '/notes' ) ) );
+		self::assertSame( 'Bitte kürzer.', $note[0]['body']['note'] ?? null );
+		self::assertSame( 'Autorin', $note[0]['body']['by'] ?? null );
+	}
+
+	/**
+	 * Whether the HTML has a tag with all these attributes, in any order (WordPress' HTML API sorts them).
+	 *
+	 * @param string $html     The HTML.
+	 * @param string $tag      Tag name.
+	 * @param string ...$attrs Attributes as written, e.g. 'value="page"' or 'selected'.
+	 */
+	private static function has_tag( string $html, string $tag, string ...$attrs ): bool {
+		preg_match_all( '/<' . $tag . '\b[^>]*>/', $html, $tags );
+
+		foreach ( $tags[0] as $found ) {
+			$all = true;
+
+			foreach ( $attrs as $attr ) {
+				$all = $all && 1 === preg_match( '/\s' . preg_quote( $attr, '/' ) . '(?=[\s=>\/])/', $found );
+			}
+
+			if ( $all ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	/**
 	 * The page's HTML.
 	 *
@@ -196,6 +403,7 @@ final class TextsTest extends RankSphereTestCase {
 		ob_start();
 		( new TextsPage() )->render();
 		unset( $_GET['text'] );
+		delete_transient( 'ranksphere_text_ideas_' . md5( 'https://ranksphere.test/projects/muster|' . \RankSphere\Insights\Insights::language() ) );
 
 		return (string) ob_get_clean();
 	}
@@ -243,6 +451,12 @@ final class TextsTest extends RankSphereTestCase {
 							'label' => 'Freigegebenes Zitat',
 						),
 					),
+				),
+				array(
+					'key'      => 'landing',
+					'label'    => 'Leistungsseite',
+					'hint'     => 'Stellt eine Leistung vor.',
+					'required' => array(),
 				),
 			),
 			'texts'   => array(
@@ -302,6 +516,25 @@ final class TextsTest extends RankSphereTestCase {
 			),
 			'post_type'         => null,
 			'default_post_type' => 'page',
+			'source'            => null,
+			'versions'          => array(
+				array(
+					'number'     => 2,
+					'reason'     => 'note',
+					'label'      => 'Nachgebessert: „kürzer“',
+					'by'         => 'Ben',
+					'score'      => 84,
+					'created_at' => '2026-10-05T09:00:00+00:00',
+				),
+				array(
+					'number'     => 1,
+					'reason'     => 'start',
+					'label'      => 'Erster Entwurf',
+					'by'         => 'Anna',
+					'score'      => 71,
+					'created_at' => '2026-10-05T08:00:00+00:00',
+				),
+			),
 		);
 	}
 }

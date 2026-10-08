@@ -113,6 +113,24 @@ anlegen darf; danach meldet das Plugin ihn an RankSphere (`/texts/{id}/pushed`).
 Nonce + Rechteprüfung, Hinweise je Benutzer als Transient. Das HTML des Texts kommt von RankSphere schon escaped und
 läuft zusätzlich durch `wp_kses_post`.
 
+**Bestehende Beiträge, Überarbeitung, Verlauf** (ab 1.0.0-alpha.7): Im Formular wählt der Autor den Beitragstyp und
+„Etwas Neues“ oder „Einen bestehenden Beitrag überarbeiten“ – aus einer Liste der Beiträge, die er bearbeiten darf
+(`ranksphere/v1/editable-posts`, Suche nach Titel), nie über eine Adresse. Mitgeschickt werden der Text des Beitrags
+(`Texts::source()`, auch von Entwürfen) und die veröffentlichten Seiten als einzige interne Linkziele
+(`Texts::site_pages()`). Gespeichert wird nach `Drafts::save()` mit `revises`: unveröffentlichtes Original → Text
+hinein, Inhalt davor als WordPress-Revision; veröffentlichtes Original → **nie anfassen**, sondern Überarbeitungs-Entwurf
+(`_ranksphere_revises`). In dessen Editor-Box „In Original übernehmen“ (`Admin\ApplyRevision`): öffnet das Original mit
+Titel und Text als ungespeicherte Änderung (Block-Editor über `core/editor`, klassischer Editor über das Formular),
+live geht es erst mit „Aktualisieren“ des Autors; vorher wird der Live-Stand als Revision gesichert, danach folgen die
+SEO-Felder (mit SEO-Verlauf). Der **Verlauf** in der Box (`Admin\PostHistory`) zeigt Text-Ereignisse
+(`Content\TextHistory`) und SEO-Änderungen; „Vergleichen oder wiederherstellen“ führt in WordPress' eigene
+Revisionsansicht – kein zweiter Speicher für Inhalte. Page-Builder mit eigenem Editor sind nicht abgedeckt.
+
+**Vorschläge, Nachbessern, Versionen** (ab 1.0.0-alpha.7): „Worüber schreiben?“ zeigt offene Aufgaben aus RankSphere,
+die einen Text brauchen (`/texts/ideas`, 10 min gehalten) – ein Klick füllt das Formular (`?type=&topic=&path=`); die
+Editor-Box verlinkt „Mit RankSphere überarbeiten“ (`?post=`). Am fertigen Text: „Nachbessern“ mit freiem Hinweis
+(RankSphere überarbeitet die aktuelle Fassung) und „Versionen“ mit Ansehen und Wiederherstellen (ohne KI-Kosten).
+
 **Übersetzung:** Quelltexte Englisch; Deutsch liegt als `languages/ranksphere-de_DE.l10n.php` bei (WordPress' PHP-Format
 ab 6.5), bis translate.wordpress.org übernimmt. `tests/Unit/TranslationsTest.php` prüft, dass jeder Text übersetzt ist.
 

@@ -42,6 +42,9 @@ Schnittstelle in `docs/CONTRACT.md`, SEO-Plugins in `docs/SEO-PLUGINS.md`.
 - Admin-Oberfläche nur aus den Bausteinen in `Admin\Ui` (Kachel, Kennzahl, Veränderung, Urteil, Pille, Hinweis, Link,
   Icon) und den Tokens in `assets/admin.css` – sie spiegeln RankSphere' Dashboard; Farben nie direkt, Status nie nur als Farbe.
   Neues Icon = Lucide-Pfad in `Ui::ICONS`.
+- **Veröffentlichtes nie anfassen:** Texte für einen veröffentlichten Beitrag werden ein Überarbeitungs-Entwurf
+  (`Drafts::REVISES_META`); ins Original kommen sie nur im Editor als ungespeicherte Änderung (`ApplyRevision`) – live
+  erst mit „Aktualisieren“ des Autors. Ersetzte Inhalte bleiben WordPress-Revisionen (`TextHistory::keep_current()`).
 - Daten von RankSphere sind fremde Daten: nur über `Insights\Value` lesen (Typ geprüft), escaped ausgeben, Links nur https.
 - Sicherheit (immer): Eingaben früh säubern, Ausgaben spät escapen, Nonce **und** Rechteprüfung, REST-Routen nie
   ohne `permission_callback`, SQL nur mit `$wpdb->prepare()`. Anfragen von RankSphere zusätzlich per HMAC –

@@ -58,7 +58,7 @@ final class SeoService {
 	 *
 	 * @param int                                          $post_id Post ID.
 	 * @param array<string, string|bool|list<string>|null> $changes Cleaned changes.
-	 * @param string                                       $source  "ranksphere", "suggestion" (taken over in the editor) or "undo".
+	 * @param string                                       $source  "ranksphere", "suggestion" (taken over in the editor), "revision" (with a revision taken over) or "undo".
 	 *
 	 * @return array{before: array<string, mixed>, after: array<string, mixed>, history_id: ?string, unsupported: list<string>}
 	 */

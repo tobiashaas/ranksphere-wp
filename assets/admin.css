@@ -38,6 +38,11 @@
 	max-width: 1320px;
 }
 
+/* Hidden stays hidden, whatever the layout of the element says. */
+.ranksphere [hidden] {
+	display: none !important;
+}
+
 .rs-header {
 	display: flex;
 	flex-wrap: wrap;
@@ -823,5 +828,77 @@
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
+	min-width: 0;
+}
+
+/* "Write a new one / rewrite an existing one". */
+.ranksphere fieldset.rs-choice {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.rs-choice legend {
+	margin-bottom: 6px;
+	padding: 0;
+	font-weight: 600;
+}
+
+.rs-choice label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 2px 0;
+	font-weight: 400;
+}
+
+.ranksphere .rs-field input.rs-search {
+	width: 100%;
+	min-height: 36px;
+	padding: 6px 10px;
+	border: 1px solid #d4d4d4;
+	border-radius: 8px;
+	font-size: 14px;
+}
+
+.rs-inline-form {
+	display: inline;
+	margin: 0;
+}
+
+.rs-list > li.rs-current {
+	color: var(--rs-primary);
+}
+
+/* The history in the box on the edit screen. */
+.rs-history {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.rs-history li {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 0;
+	padding: 6px 0;
+	border-top: 1px solid var(--rs-border);
+}
+
+.rs-history li:first-child {
+	border-top: 0;
+}
+
+.rs-history li > .rs-icon {
+	flex: none;
+	margin-top: 2px;
+	color: var(--rs-muted);
+}
+
+.rs-history li > div {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
 	min-width: 0;
 }

@@ -44,23 +44,197 @@ final class Texts {
 		return $this->client()?->get( '/texts', array( 'lang' => Insights::language() ) ) ?? self::not_connected();
 	}
 
+	/** Characters of an existing post's text sent to RankSphere. */
+	public const SOURCE_CHARS = 12000;
+
+	/** Own pages sent as the only internal link targets. */
+	public const SITE_PAGES = 200;
+
+	/** How long the ideas are kept (they come from RankSphere's tasks). */
+	private const IDEAS_TTL = 10 * MINUTE_IN_SECONDS;
+
 	/**
-	 * Starts a text.
+	 * Starts a text – for a new post, or for an existing one (its text goes along, so RankSphere
+	 * builds on it, also for drafts nobody can see on the website). The site's own pages go along
+	 * as the only internal link targets.
 	 *
-	 * @param array{type: string, topic: string, target_page?: string, notes?: string, required?: array<string, string>} $data What the person entered.
+	 * @param array{type: string, topic: string, post_type?: string, notes?: string, required?: array<string, string>} $data What the person entered.
+	 * @param \WP_Post|null                                                                                            $post The existing post the text is for.
 	 *
 	 * @return array<mixed>|WP_Error With the new text's id.
 	 */
-	public function start( array $data ): array|WP_Error {
+	public function start( array $data, ?\WP_Post $post = null ): array|WP_Error {
 		$user = wp_get_current_user();
+
+		if ( null !== $post ) {
+			$data['post_type'] = $post->post_type;
+		}
 
 		return $this->client()?->send(
 			'/texts',
-			array_filter( $data, static fn ( mixed $value ): bool => '' !== $value && array() !== $value ) + array(
-				'by'   => $user->exists() ? $user->display_name : null,
-				'lang' => Insights::language(),
+			array_filter( $data, static fn ( mixed $value ): bool => '' !== $value && array() !== $value ) + array_filter(
+				array(
+					'source'     => null === $post ? null : self::source( $post ),
+					'site_pages' => self::site_pages( null === $post ? 0 : $post->ID ),
+					'by'         => $user->exists() ? $user->display_name : null,
+					'lang'       => Insights::language(),
+				),
+				static fn ( mixed $value ): bool => null !== $value && array() !== $value
 			)
 		) ?? self::not_connected();
+	}
+
+	/**
+	 * Ideas: open tasks of the project that call for a text (kind, topic, page). Kept ten minutes.
+	 *
+	 * @return list<array<mixed>>
+	 */
+	public function ideas(): array {
+		$connection = $this->store->get();
+
+		if ( null === $connection ) {
+			return array();
+		}
+
+		$key    = 'ranksphere_text_ideas_' . md5( $connection->project_url . '|' . Insights::language() );
+		$cached = get_transient( $key );
+
+		if ( is_array( $cached ) ) {
+			return Value::maps( $cached, 'ideas' );
+		}
+
+		$answer = ( new RankSphereClient( $connection ) )->get( '/texts/ideas', array( 'lang' => Insights::language() ) );
+		$ideas  = $answer instanceof WP_Error ? array( 'ideas' => array() ) : $answer;
+		set_transient( $key, $ideas, $answer instanceof WP_Error ? 2 * MINUTE_IN_SECONDS : self::IDEAS_TTL );
+
+		return Value::maps( $ideas, 'ideas' );
+	}
+
+	/**
+	 * A note on the finished text – RankSphere revises the current version with it.
+	 *
+	 * @param int    $id   RankSphere's id.
+	 * @param string $note The note.
+	 *
+	 * @return array<mixed>|WP_Error
+	 */
+	public function note( int $id, string $note ): array|WP_Error {
+		return $this->client()?->send( '/texts/' . $id . '/notes', array( 'note' => $note ) + self::by() ) ?? self::not_connected();
+	}
+
+	/**
+	 * One older version (its text, SEO fields, label).
+	 *
+	 * @param int $id     RankSphere's id.
+	 * @param int $number The version.
+	 *
+	 * @return array<mixed>|WP_Error
+	 */
+	public function version( int $id, int $number ): array|WP_Error {
+		return $this->client()?->get( '/texts/' . $id . '/versions/' . $number, array( 'lang' => Insights::language() ) ) ?? self::not_connected();
+	}
+
+	/**
+	 * An older version becomes the current one (no AI call).
+	 *
+	 * @param int $id     RankSphere's id.
+	 * @param int $number The version.
+	 *
+	 * @return array<mixed>|WP_Error
+	 */
+	public function restore( int $id, int $number ): array|WP_Error {
+		return $this->client()?->send( '/texts/' . $id . '/restore', array( 'version' => $number ) + self::by() ) ?? self::not_connected();
+	}
+
+	/**
+	 * What RankSphere gets of an existing post: its text as plain paragraphs (headings marked),
+	 * title, address and status.
+	 *
+	 * @param \WP_Post $post The post.
+	 *
+	 * @return array{post_id: int, post_type: string, status: string, title: string, path: string|null, content: string}
+	 */
+	public static function source( \WP_Post $post ): array {
+		$html = strip_shortcodes( (string) preg_replace( '/<!--.*?-->/s', '', $post->post_content ) );
+		$html = (string) preg_replace( '/<h([1-6])[^>]*>/i', "\n\n## ", $html );
+		$html = (string) preg_replace( '#</(p|h[1-6]|li|div|blockquote|tr)>|<br\s*/?>#i', "\n", $html );
+		$text = trim( (string) preg_replace( "/\n{3,}/", "\n\n", (string) preg_replace( '/[ \t]+/', ' ', html_entity_decode( wp_strip_all_tags( $html ), ENT_QUOTES, 'UTF-8' ) ) ) );
+		$path = 'publish' === $post->post_status ? self::relative( $post ) : null;
+
+		return array(
+			'post_id'   => $post->ID,
+			'post_type' => $post->post_type,
+			'status'    => $post->post_status,
+			'title'     => get_the_title( $post ),
+			'path'      => $path,
+			'content'   => mb_substr( $text, 0, self::SOURCE_CHARS ),
+		);
+	}
+
+	/**
+	 * The site's published pages and posts (title + path) – the only internal link targets.
+	 *
+	 * @param int $exclude A post to leave out (the one being rewritten).
+	 *
+	 * @return list<array{title: string, path: string}>
+	 */
+	public static function site_pages( int $exclude = 0 ): array {
+		$types = array_values(
+			array_filter(
+				get_post_types( array( 'public' => true ) ),
+				static fn ( string $type ): bool => 'attachment' !== $type
+			)
+		);
+		$posts = get_posts(
+			array(
+				'post_type'        => $types,
+				'post_status'      => 'publish',
+				'numberposts'      => self::SITE_PAGES,
+				'orderby'          => array(
+					'menu_order' => 'ASC',
+					'date'       => 'DESC',
+				),
+				'exclude'          => $exclude > 0 ? array( $exclude ) : array(),
+				'suppress_filters' => false,
+			)
+		);
+		$pages = array();
+
+		foreach ( $posts as $post ) {
+			$path = self::relative( $post );
+
+			if ( null !== $path ) {
+				$pages[] = array(
+					'title' => html_entity_decode( get_the_title( $post ), ENT_QUOTES, 'UTF-8' ),
+					'path'  => $path,
+				);
+			}
+		}
+
+		return $pages;
+	}
+
+	/**
+	 * A post's address on the site: path, with the query for plain permalinks ("/?page_id=12").
+	 *
+	 * @param \WP_Post $post The post.
+	 */
+	private static function relative( \WP_Post $post ): ?string {
+		$link = get_permalink( $post );
+		$path = is_string( $link ) ? wp_make_link_relative( $link ) : '';
+
+		return str_starts_with( $path, '/' ) ? $path : null;
+	}
+
+	/**
+	 * Who asks – the current user's display name.
+	 *
+	 * @return array{by?: string}
+	 */
+	private static function by(): array {
+		$user = wp_get_current_user();
+
+		return $user->exists() ? array( 'by' => $user->display_name ) : array();
 	}
 
 	/**
@@ -83,16 +257,18 @@ final class Texts {
 	 * @return array<mixed>|WP_Error
 	 */
 	public function answer( int $id, array $answers ): array|WP_Error {
-		return $this->client()?->send( '/texts/' . $id . '/answers', array( 'answers' => $answers ) ) ?? self::not_connected();
+		return $this->client()?->send( '/texts/' . $id . '/answers', array( 'answers' => $answers ) + self::by() ) ?? self::not_connected();
 	}
 
 	/**
-	 * Saves the text as WordPress draft (the current user as author) and tells RankSphere.
+	 * Saves the text as WordPress draft (the current user as author) and tells RankSphere. A text
+	 * for an existing post goes into that post while it is unpublished, else into a revision
+	 * draft linked to it (Drafts).
 	 *
 	 * @param int    $id        RankSphere's id.
 	 * @param string $post_type Post type for a first draft (later drafts keep theirs).
 	 *
-	 * @return array{post_id: int, created: bool}|WP_Error
+	 * @return array{post_id: int, created: bool, mode?: string, revises?: int}|WP_Error
 	 */
 	public function save_draft( int $id, string $post_type ): array|WP_Error {
 		$client = $this->client();
@@ -115,17 +291,21 @@ final class Texts {
 		}
 
 		try {
-			$seo   = SeoFields::changes( Value::map( $payload, 'seo' ) ?? array() );
-			$saved = $this->drafts->save(
-				array(
-					'ranksphere_id' => Value::text( $payload, 'ranksphere_id' ),
-					'post_type'     => $type->name,
-					'title'         => sanitize_text_field( Value::text( $payload, 'title' ) ),
-					'content'       => Value::text( $payload, 'content' ),
-					'slug'          => Value::text( $payload, 'slug' ),
-				),
-				$seo
+			$seo     = SeoFields::changes( Value::map( $payload, 'seo' ) ?? array() );
+			$draft   = array(
+				'ranksphere_id' => Value::text( $payload, 'ranksphere_id' ),
+				'post_type'     => $type->name,
+				'title'         => sanitize_text_field( Value::text( $payload, 'title' ) ),
+				'content'       => Value::text( $payload, 'content' ),
+				'slug'          => Value::text( $payload, 'slug' ),
 			);
+			$revises = (int) ( Value::number( $payload, 'revises' ) ?? 0 );
+
+			if ( $revises > 0 ) {
+				$draft['revises'] = $revises;
+			}
+
+			$saved = $this->drafts->save( $draft, $seo );
 		} catch ( \InvalidArgumentException | \RuntimeException $e ) {
 			return new WP_Error( 'ranksphere_invalid_content', $e->getMessage() );
 		}

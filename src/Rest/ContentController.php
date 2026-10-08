@@ -127,6 +127,11 @@ final class ContentController {
 					'content'       => $this->text_arg( 1, 500000 ),
 					'slug'          => array( 'required' => false ) + $this->text_arg( 0, 200 ),
 					'excerpt'       => array( 'required' => false ) + $this->text_arg( 0, 2000 ),
+					'revises'       => array(
+						'required' => false,
+						'type'     => array( 'integer', 'null' ),
+						'minimum'  => 1,
+					),
 				),
 			)
 		);
@@ -254,7 +259,7 @@ final class ContentController {
 			return $seo;
 		}
 
-		$draft = array(
+		$draft   = array(
 			'ranksphere_id' => $this->string_param( $request, 'ranksphere_id' ),
 			'post_type'     => $post_type,
 			'title'         => sanitize_text_field( $this->string_param( $request, 'title' ) ),
@@ -262,6 +267,11 @@ final class ContentController {
 			'slug'          => $this->string_param( $request, 'slug' ),
 			'excerpt'       => sanitize_textarea_field( $this->string_param( $request, 'excerpt' ) ),
 		);
+		$revises = $request->get_param( 'revises' );
+
+		if ( is_numeric( $revises ) && (int) $revises > 0 ) {
+			$draft['revises'] = (int) $revises;
+		}
 
 		try {
 			$saved = $this->drafts->save( $draft, $seo );
