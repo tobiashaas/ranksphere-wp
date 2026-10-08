@@ -299,6 +299,7 @@ final class Ui {
 			'required'    => true,
 			'maxlength'   => true,
 			'minlength'   => true,
+			'checked'     => true,
 		);
 		$tags['textarea'] = $common + array(
 			'name'        => true,

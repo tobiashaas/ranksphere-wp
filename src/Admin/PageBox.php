@@ -382,25 +382,91 @@ final class PageBox {
 			return '<p>' . esc_html__( 'This site is not connected to RankSphere.', 'ranksphere' ) . '</p>';
 		}
 
-		$text = self::ranksphere_text( $post, $connection->project_url );
+		$text     = self::ranksphere_text( $post, $connection->project_url );
+		$revision = self::revision( $post );
+		$history  = PostHistory::html( $post );
+
+		if ( '' !== $revision ) {
+			return $revision . ( '' !== $text ? self::link( $text, __( 'Text, questions and review', 'ranksphere' ) ) : '' ) . $history;
+		}
 
 		if ( 'publish' !== $post->post_status ) {
 			return ( '' !== $text
 				? '<p>' . esc_html__( 'This draft was written in RankSphere.', 'ranksphere' ) . '</p>' . self::link( $text, __( 'Text, questions and review', 'ranksphere' ) )
 				: '' )
-				. Ui::note( 'neutral', __( 'Google figures appear once the page is published and found.', 'ranksphere' ) );
+				. Ui::note( 'neutral', __( 'Google figures appear once the page is published and found.', 'ranksphere' ) )
+				. self::rewrite( $post ) . $history;
 		}
 
 		$permalink = get_permalink( $post );
 		$entry     = is_string( $permalink ) ? ( new Insights( $this->store ) )->page( $permalink ) : null;
 
 		if ( null === $entry || null === $entry['data'] ) {
-			return '<p>' . esc_html( OverviewPage::error_message( $entry['error'] ?? null ) ) . '</p>';
+			return '<p>' . esc_html( OverviewPage::error_message( $entry['error'] ?? null ) ) . '</p>' . self::rewrite( $post ) . $history;
 		}
 
 		return $this->figures( $entry['data'] )
 			. '<h4>' . esc_html__( 'Title and description', 'ranksphere' ) . '</h4><div data-ranksphere-suggestion>' . self::suggestion_intro() . '</div>'
-			. ( '' !== $text ? self::link( $text, __( 'Text, questions and review', 'ranksphere' ) ) : '' );
+			. self::rewrite( $post )
+			. ( '' !== $text ? self::link( $text, __( 'Text, questions and review', 'ranksphere' ) ) : '' )
+			. $history;
+	}
+
+	/**
+	 * "Rewrite with RankSphere": the page "Texte" with this post chosen.
+	 *
+	 * @param WP_Post $post The post.
+	 */
+	private static function rewrite( WP_Post $post ): string {
+		if ( ! current_user_can( TextsPage::CAPABILITY ) || ! array_key_exists( $post->post_type, \RankSphere\Content\Texts::post_types() ) ) {
+			return '';
+		}
+
+		return '<h4>' . esc_html__( 'Text', 'ranksphere' ) . '</h4><p class="rs-muted">' . esc_html__( 'RankSphere rewrites this page from its text, the searches it is found with and your voice – as a draft; the page stays as it is until you take it over.', 'ranksphere' ) . '</p>'
+			. '<p><a class="rs-button rs-button-small rs-button-outline" href="' . esc_url( TextsPage::url_for_post( $post->ID ) ) . '">' . Ui::icon( 'sparkles' ) . esc_html__( 'Rewrite with RankSphere', 'ranksphere' ) . '</a></p>';
+	}
+
+	/**
+	 * On a revision draft: which post it revises and "Take over into the original".
+	 *
+	 * @param WP_Post $post The post being edited.
+	 */
+	private static function revision( WP_Post $post ): string {
+		$original_id = Drafts::meta_int( $post->ID, Drafts::REVISES_META );
+		$original    = $original_id > 0 ? get_post( $original_id ) : null;
+
+		if ( null === $original ) {
+			return '';
+		}
+
+		$title   = '' !== get_the_title( $original ) ? get_the_title( $original ) : __( '(no title)', 'ranksphere' );
+		$link    = current_user_can( 'edit_post', $original->ID ) ? '<a href="' . esc_url( (string) get_edit_post_link( $original->ID ) ) . '">' . esc_html( $title ) . '</a>' : esc_html( $title );
+		$applied = Drafts::meta_int( $post->ID, Drafts::APPLIED_META );
+		$html    = '<h4>' . esc_html__( 'Revision', 'ranksphere' ) . '</h4><p>' . sprintf(
+			/* translators: %s: title of the original post (link). */
+			esc_html__( 'Revision of %s. The published page stays as it is until you take this over.', 'ranksphere' ),
+			$link
+		) . '</p>';
+
+		if ( $applied > 0 ) {
+			$format = get_option( 'date_format' );
+
+			return $html . Ui::note(
+				'good',
+				sprintf(
+					/* translators: %s: date. */
+					__( 'Taken over into the original on %s.', 'ranksphere' ),
+					(string) wp_date( is_string( $format ) && '' !== $format ? $format : 'Y-m-d', $applied )
+				)
+			);
+		}
+
+		if ( 'publish' !== $original->post_status || null === ApplyRevision::revision_for( $post->ID, $original->ID ) ) {
+			return $html;
+		}
+
+		return $html . '<p class="rs-muted">' . esc_html__( 'Save your changes here first. Then this opens the original with this text filled in – it goes live only when you click "Update" there; the current version stays as revision.', 'ranksphere' ) . '</p>'
+			. '<p><a class="rs-button rs-button-small" href="' . esc_url( ApplyRevision::url( $post->ID, $original->ID ) ) . '">' . Ui::icon( 'send' ) . esc_html__( 'Take over into the original', 'ranksphere' ) . '</a></p>';
 	}
 
 	/**

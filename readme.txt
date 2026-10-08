@@ -4,7 +4,7 @@ Tags: seo, content, ai visibility, drafts, search console
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0-alpha.6
+Stable tag: 1.0.0-alpha.7
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -21,7 +21,7 @@ RankSphere analyses how a website is found in Google and in AI assistants such a
 
 = External service =
 
-This plugin is an interface to RankSphere (https://ranksphere.cloud), a service operated by the plugin's author. It sends nothing until an administrator connects the site under "RankSphere" in the admin and approves the connection. Once connected, RankSphere sends drafts and SEO fields to the site. To show the overview, the dashboard widget and the box on the edit screen, the site asks RankSphere for the project's figures – with the language of the logged-in user and, for the box, the address of the page being edited; answers are kept for ten minutes. When someone clicks "Create suggestion" in the box, the site sends RankSphere the page's address, its current SEO title and description and its text; when a suggestion is applied, the site tells RankSphere what changed and the name of the user who applied it. On RankSphere → Texts, the site sends what the user enters for a new text (kind of text, topic, facts, the page it is for), the user's display name and language, and answers to RankSphere's questions; it fetches the texts and, when someone saves one as a draft, tells RankSphere the draft's ID and edit address. When the connection ends in WordPress (you disconnect, the application password is revoked or the approving user is deleted), the site tells RankSphere so it stops using it; that message contains only the reason.
+This plugin is an interface to RankSphere (https://ranksphere.cloud), a service operated by the plugin's author. It sends nothing until an administrator connects the site under "RankSphere" in the admin and approves the connection. Once connected, RankSphere sends drafts and SEO fields to the site. To show the overview, the dashboard widget and the box on the edit screen, the site asks RankSphere for the project's figures – with the language of the logged-in user and, for the box, the address of the page being edited; answers are kept for ten minutes. When someone clicks "Create suggestion" in the box, the site sends RankSphere the page's address, its current SEO title and description and its text; when a suggestion is applied, the site tells RankSphere what changed and the name of the user who applied it. On RankSphere → Texts, the site sends what the user enters for a new text (post type, kind of text, topic, facts), the user's display name and language, answers to RankSphere's questions and notes on a text; for a rewrite also the chosen post's title, address and text, and with every new text the titles and addresses of the site's published pages (so links point only to pages that exist). It fetches the texts and ideas and, when someone saves one as a draft, tells RankSphere the draft's ID and edit address. When the connection ends in WordPress (you disconnect, the application password is revoked or the approving user is deleted), the site tells RankSphere so it stops using it; that message contains only the reason.
 
 Builds downloaded from ranksphere.cloud (not from WordPress.org) check ranksphere.cloud for updates, at most every six hours. The request contains the installed plugin version and the chosen release channel – not the site's address.
 
@@ -52,6 +52,13 @@ No. Texts arrive as drafts. Publishing is always done by a person in WordPress.
 Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework and Slim SEO. Without an SEO plugin, RankSphere outputs title and description itself.
 
 == Changelog ==
+
+= 1.0.0-alpha.7 =
+* Texts: choose the post type and write something new or rewrite an existing post – picked from a searchable list, no address to type. RankSphere builds on the post's text and links only to pages that exist on your site.
+* A published page is never changed: the rewrite becomes a draft next to it. "Take over into the original" in its editor fills the text in – it goes live only when you click "Update"; the version before stays as WordPress revision.
+* History in the RankSphere box: texts, rewrites and SEO changes, with a link to compare or restore the version before.
+* "What to write about": ideas from RankSphere's open tasks fill the form with one click; "Rewrite with RankSphere" in the editor box.
+* "Refine" a finished text with a note (e.g. "shorter"), and every version of a text can be viewed and restored.
 
 = 1.0.0-alpha.6 =
 * New: RankSphere → Texts. Start a text in WordPress (kind of text, topic, facts), follow it, answer RankSphere's open questions and save it as a draft with yourself as author – without opening RankSphere. Nothing is published.
