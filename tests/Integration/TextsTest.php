@@ -151,7 +151,7 @@ final class TextsTest extends RankSphereTestCase {
 		self::assertStringContainsString( '<mark>[[Angabe fehlt: Wochentag]]</mark>', $html );
 		self::assertStringNotContainsString( '<script', $html );
 		self::assertStringContainsString( 'name="post_type"', $html );
-		self::assertMatchesRegularExpression( '/<option value="page" selected/', $html, 'the default for the kind of text' );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="page"', 'selected' ), 'the default for the kind of text' );
 		self::assertStringContainsString( '84', $html );
 
 		$this->answers['/api/wordpress/v1/texts/7'] = array( 'status' => 'pending' ) + self::written();
@@ -228,10 +228,11 @@ final class TextsTest extends RankSphereTestCase {
 		unset( $_GET['post'] );
 
 		self::assertStringContainsString( 'name="post_type"', $html );
-		self::assertMatchesRegularExpression( '/<option value="page"[^>]*selected/', $html, 'the post type of the chosen post' );
-		self::assertMatchesRegularExpression( '/value="existing" data-ranksphere-mode checked/', $html );
-		self::assertMatchesRegularExpression( '/<option value="' . $page . '" selected[^>]*>Wartung &amp; Service</', $html );
-		self::assertMatchesRegularExpression( '/<option value="landing"[^>]*selected/', $html, 'a page presents a service' );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="page"', 'selected' ), 'the post type of the chosen post' );
+		self::assertTrue( self::has_tag( $html, 'input', 'value="existing"', 'checked' ) );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="' . $page . '"', 'selected' ) );
+		self::assertStringContainsString( '>Wartung &amp; Service</option>', $html );
+		self::assertTrue( self::has_tag( $html, 'option', 'value="landing"', 'selected' ), 'a page presents a service' );
 		self::assertStringNotContainsString( 'target_page', $html, 'no address to type' );
 		self::assertStringContainsString( 'What to write about', $html );
 		self::assertMatchesRegularExpression( '/type=landing&(amp|#038);topic=heizung%20warten/', $html, 'an idea fills the form' );
@@ -365,6 +366,31 @@ final class TextsTest extends RankSphereTestCase {
 		$note = array_values( array_filter( $this->asked, static fn ( array $request ): bool => str_ends_with( $request['path'], '/notes' ) ) );
 		self::assertSame( 'Bitte kürzer.', $note[0]['body']['note'] ?? null );
 		self::assertSame( 'Autorin', $note[0]['body']['by'] ?? null );
+	}
+
+	/**
+	 * Whether the HTML has a tag with all these attributes, in any order (WordPress' HTML API sorts them).
+	 *
+	 * @param string $html     The HTML.
+	 * @param string $tag      Tag name.
+	 * @param string ...$attrs Attributes as written, e.g. 'value="page"' or 'selected'.
+	 */
+	private static function has_tag( string $html, string $tag, string ...$attrs ): bool {
+		preg_match_all( '/<' . $tag . '\b[^>]*>/', $html, $tags );
+
+		foreach ( $tags[0] as $found ) {
+			$all = true;
+
+			foreach ( $attrs as $attr ) {
+				$all = $all && 1 === preg_match( '/\s' . preg_quote( $attr, '/' ) . '(?=[\s=>\/])/', $found );
+			}
+
+			if ( $all ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

@@ -161,7 +161,9 @@ final class UpdaterTest extends WP_UnitTestCase {
 		self::assertSame( '1.0.0-alpha.2', $info->version ?? null );
 		$sections = $info->sections ?? array();
 		self::assertIsArray( $sections );
-		self::assertSame( '<ul><li>Fix</li></ul>alert(1)', $sections['changelog'] );
+		self::assertIsString( $sections['changelog'] ?? null );
+		self::assertStringStartsWith( '<ul><li>Fix</li></ul>', $sections['changelog'] );
+		self::assertStringNotContainsString( '<script', $sections['changelog'], 'newer WordPress drops the script\'s text as well' );
 
 		self::assertFalse( apply_filters( 'plugins_api', false, 'plugin_information', (object) array( 'slug' => 'other' ) ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress' filter.
 	}
