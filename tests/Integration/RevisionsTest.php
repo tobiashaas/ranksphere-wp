@@ -145,7 +145,9 @@ final class RevisionsTest extends RankSphereTestCase {
 		self::assertTrue( wp_script_is( 'ranksphere-apply-revision', 'enqueued' ) );
 		$script = wp_scripts()->get_data( 'ranksphere-apply-revision', 'before' );
 		self::assertIsArray( $script );
-		$data = json_decode( (string) preg_replace( '/^var rankSphereApply = |;$/', '', (string) end( $script ) ), true );
+		$inline = end( $script );
+		self::assertIsString( $inline );
+		$data = json_decode( (string) preg_replace( '/^var rankSphereApply = |;$/', '', $inline ), true );
 		self::assertIsArray( $data );
 		self::assertSame( 'Wartung für Ihr Haus', $data['title'] ?? null );
 		self::assertSame( $original, $data['original'] ?? null, 'numbers stay numbers' );
