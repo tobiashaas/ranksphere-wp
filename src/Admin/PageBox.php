@@ -11,6 +11,7 @@ namespace RankSphere\Admin;
 
 use RankSphere\Connection\ConnectionStore;
 use RankSphere\Content\Drafts;
+use RankSphere\Content\PlaceholderLock;
 use RankSphere\Insights\Insights;
 use RankSphere\Insights\Suggestions;
 use RankSphere\Insights\Value;
@@ -444,7 +445,7 @@ final class PageBox {
 		$applied = Drafts::meta_int( $post->ID, Drafts::APPLIED_META );
 		$html    = '<h4>' . esc_html__( 'Revision', 'ranksphere' ) . '</h4><p>' . sprintf(
 			/* translators: %s: title of the original post (link). */
-			esc_html__( 'Revision of %s. The published page stays as it is until you take this over.', 'ranksphere' ),
+			esc_html__( 'Revision of %s. The original stays as it is until you take this over.', 'ranksphere' ),
 			$link
 		) . '</p>';
 
@@ -461,11 +462,16 @@ final class PageBox {
 			);
 		}
 
-		if ( 'publish' !== $original->post_status || null === ApplyRevision::revision_for( $post->ID, $original->ID ) ) {
+		if ( null === ApplyRevision::revision_for( $post->ID, $original->ID ) ) {
 			return $html;
 		}
 
-		return $html . '<p class="rs-muted">' . esc_html__( 'Save your changes here first. Then this opens the original with this text filled in – it goes live only when you click "Update" there; the current version stays as revision.', 'ranksphere' ) . '</p>'
+		// A text with gaps would go live with them: fill them in here first.
+		if ( PlaceholderLock::has_placeholders( $post->post_content ) ) {
+			return $html . Ui::note( 'watch', __( 'Fill in the placeholders [[…]] first – then you can take this text over into the original.', 'ranksphere' ) );
+		}
+
+		return $html . '<p class="rs-muted">' . esc_html__( 'Save your changes here first. Then this opens the original with this text filled in – nothing changes until you save it there; the current version stays as revision.', 'ranksphere' ) . '</p>'
 			. '<p><a class="rs-button rs-button-small" href="' . esc_url( ApplyRevision::url( $post->ID, $original->ID ) ) . '">' . Ui::icon( 'send' ) . esc_html__( 'Take over into the original', 'ranksphere' ) . '</a></p>';
 	}
 

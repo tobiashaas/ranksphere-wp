@@ -84,7 +84,10 @@ final class Value {
 	public static function link( array $data, string $key ): string {
 		$url = self::text( $data, $key );
 
-		return str_starts_with( $url, 'https://' ) || str_starts_with( $url, 'http://localhost' ) ? $url : '';
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+
+		// https, or plain http for a RankSphere running on this machine (development).
+		return str_starts_with( $url, 'https://' ) || ( str_starts_with( $url, 'http://' ) && in_array( $host, array( 'localhost', '127.0.0.1' ), true ) ) ? $url : '';
 	}
 
 	/**

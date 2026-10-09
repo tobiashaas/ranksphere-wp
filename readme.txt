@@ -4,7 +4,7 @@ Tags: seo, content, ai visibility, drafts, search console
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0-alpha.7
+Stable tag: 1.0.0-alpha.8
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,14 @@ No. Texts arrive as drafts. Publishing is always done by a person in WordPress.
 Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework and Slim SEO. Without an SEO plugin, RankSphere outputs title and description itself.
 
 == Changelog ==
+
+= 1.0.0-alpha.8 =
+* Safer rewrites: a rewrite draft always stays a draft (published it would be a second page), it can only be taken over once its placeholders are filled in, and a page that is already live is never taken offline by the placeholder lock.
+* Nothing is overwritten without a way back: a draft whose post type keeps no revisions gets the rewrite as a draft next to it, and taking over warns when WordPress cannot keep the text before.
+* Taking over works for private and scheduled posts too, waits for the SEO plugin's fields to be saved and says so when recording fails.
+* Drafts someone else saved are no longer overwritten by people who may not edit them; drafts of post types hidden from search are found again.
+* Answers to questions with brackets or quotes arrive intact; authors see their own posts in the list; titles with "&" stay as they are; the page no longer reloads while you type.
+* RankSphere's messages (busy, limits) come in your language; each request signature counts once, also under load.
 
 = 1.0.0-alpha.7 =
 * Texts: choose the post type and write something new or rewrite an existing post – picked from a searchable list, no address to type. RankSphere builds on the post's text and links only to pages that exist on your site.

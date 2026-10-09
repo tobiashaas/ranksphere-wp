@@ -220,6 +220,18 @@ final class Ui {
 	}
 
 	/**
+	 * Data for a script as `var name = {…};` before it. Unlike wp_localize_script() the values stay
+	 * as they are: numbers stay numbers, and entities in titles or texts are not decoded.
+	 *
+	 * @param string       $handle The script.
+	 * @param string       $name   The global variable.
+	 * @param array<mixed> $data   The data.
+	 */
+	public static function script_data( string $handle, string $name, array $data ): void {
+		wp_add_inline_script( $handle, 'var ' . $name . ' = ' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE ) . ';', 'before' );
+	}
+
+	/**
 	 * Prints HTML built here – through wp_kses() with the tags and attributes these blocks use.
 	 *
 	 * @param string $html The HTML.
@@ -276,11 +288,19 @@ final class Ui {
 		);
 		$tags   = array();
 
-		foreach ( array( 'div', 'section', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'mark', 'small', 'br', 'hr', 'blockquote', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'td', 'dl', 'dt', 'dd', 'details', 'summary', 'fieldset', 'legend' ) as $tag ) {
+		foreach ( array( 'div', 'section', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'mark', 'small', 'sub', 'sup', 'del', 'ins', 'abbr', 'br', 'hr', 'blockquote', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'td', 'dl', 'dt', 'dd', 'details', 'summary', 'fieldset', 'legend' ) as $tag ) {
 			$tags[ $tag ] = $common;
 		}
 
-		$tags['th']       = $common + array( 'scope' => true );
+		$tags['th']       = $common + array(
+			'scope'   => true,
+			'colspan' => true,
+			'rowspan' => true,
+		);
+		$tags['td']       = $common + array(
+			'colspan' => true,
+			'rowspan' => true,
+		);
 		$tags['a']        = $common + array(
 			'href'   => true,
 			'target' => true,
@@ -307,6 +327,7 @@ final class Ui {
 			'placeholder' => true,
 			'required'    => true,
 			'maxlength'   => true,
+			'minlength'   => true,
 		);
 		$tags['select']   = $common + array(
 			'name'     => true,

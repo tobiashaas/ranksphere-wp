@@ -98,13 +98,22 @@ final class Suggestions {
 	 * @return array{before: array<string, mixed>, after: array<string, mixed>, history_id: ?string, unsupported: list<string>}|WP_Error
 	 */
 	public function apply( WP_Post $post, string $field, string $value ): array|WP_Error {
-		$value = SeoFields::clean( $field, $value );
-
-		if ( ! in_array( $field, self::FIELDS, true ) || ! is_string( $value ) || '' === $value ) {
-			return new WP_Error( 'ranksphere_invalid_field', 'Unknown field or empty value.', array( 'status' => 400 ) );
+		if ( ! in_array( $field, self::FIELDS, true ) ) {
+			return new WP_Error( 'ranksphere_invalid_field', __( 'This field cannot be taken over.', 'ranksphere' ), array( 'status' => 400 ) );
 		}
 
-		$result = SeoService::current()->update( $post->ID, array( $field => $value ), 'suggestion' );
+		try {
+			$value = SeoFields::clean( $field, $value );
+
+			if ( ! is_string( $value ) || '' === $value ) {
+				return new WP_Error( 'ranksphere_invalid_field', __( 'The suggestion is empty.', 'ranksphere' ), array( 'status' => 400 ) );
+			}
+
+			$result = SeoService::current()->update( $post->ID, array( $field => $value ), 'suggestion' );
+		} catch ( \InvalidArgumentException | \RuntimeException $e ) {
+			// The SEO plugin refused the value (too long, not supported): say so instead of a broken request.
+			return new WP_Error( 'ranksphere_seo_failed', $e->getMessage(), array( 'status' => 422 ) );
+		}
 		$client = $this->client();
 		$url    = get_permalink( $post );
 

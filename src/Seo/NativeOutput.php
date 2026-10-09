@@ -44,7 +44,8 @@ final class NativeOutput {
 	public function title( $title ): string {
 		$own = $this->field( Native::TITLE );
 
-		return null !== $own ? $own : (string) $title;
+		// WordPress prints a title from this filter as it is – escaped here, like its own titles.
+		return null !== $own ? esc_html( $own ) : (string) $title;
 	}
 
 	/**

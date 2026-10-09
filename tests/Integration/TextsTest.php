@@ -147,7 +147,7 @@ final class TextsTest extends RankSphereTestCase {
 		$html = $this->render( 7 );
 
 		self::assertStringContainsString( 'rs-tile-focus', $html, 'open questions are the next step' );
-		self::assertStringContainsString( 'name="answers[An welchen Tagen gibt es Termine?]"', $html );
+		self::assertStringContainsString( 'name="answers[0]"', $html );
 		self::assertStringContainsString( '<mark>[[Angabe fehlt: Wochentag]]</mark>', $html );
 		self::assertStringNotContainsString( '<script', $html );
 		self::assertStringContainsString( 'name="post_type"', $html );
@@ -180,6 +180,44 @@ final class TextsTest extends RankSphereTestCase {
 		$again = ( new Texts() )->save_draft( 7, 'page' );
 		self::assertIsArray( $again );
 		self::assertSame( $post->ID, $again['post_id'], 'the same draft' );
+	}
+
+	public function test_nobody_overwrites_a_draft_they_may_not_edit(): void {
+		$this->connect();
+		$this->answers['/api/wordpress/v1/texts/7/draft']['post_type'] = 'post';
+		$this->as_role( 'editor' );
+		$saved = ( new Texts() )->save_draft( 7, 'post' );
+		self::assertIsArray( $saved );
+
+		$this->as_role( 'contributor' );
+		$again = ( new Texts() )->save_draft( 7, 'post' );
+
+		self::assertInstanceOf( \WP_Error::class, $again );
+		self::assertSame( 'ranksphere_forbidden', $again->get_error_code() );
+		self::assertSame( 'Heizungswartung für Ihr Haus', get_post( $saved['post_id'] )->post_title ?? null );
+	}
+
+	public function test_a_draft_of_a_type_hidden_from_search_is_found_again(): void {
+		register_post_type(
+			'rs_service',
+			array(
+				'public'              => true,
+				'exclude_from_search' => true,
+				'show_ui'             => true,
+				'supports'            => array( 'title', 'editor', 'revisions' ),
+			)
+		);
+		$this->connect();
+		$this->answers['/api/wordpress/v1/texts/7/draft']['post_type'] = 'rs_service';
+		$this->as_role( 'administrator' );
+
+		$first  = ( new Texts() )->save_draft( 7, 'rs_service' );
+		$second = ( new Texts() )->save_draft( 7, 'rs_service' );
+		unregister_post_type( 'rs_service' );
+
+		self::assertIsArray( $first );
+		self::assertIsArray( $second );
+		self::assertSame( $first['post_id'], $second['post_id'], 'the same draft, not a second one' );
 	}
 
 	public function test_a_contributor_cannot_create_pages_from_a_text(): void {

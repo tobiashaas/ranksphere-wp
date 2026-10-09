@@ -185,19 +185,36 @@ final class Texts {
 				static fn ( string $type ): bool => 'attachment' !== $type
 			)
 		);
-		$posts = get_posts(
-			array(
-				'post_type'        => $types,
-				'post_status'      => 'publish',
-				'numberposts'      => self::SITE_PAGES,
-				'orderby'          => array(
-					'menu_order' => 'ASC',
-					'date'       => 'DESC',
-				),
-				'exclude'          => $exclude > 0 ? array( $exclude ) : array(),
-				'suppress_filters' => false,
-			)
-		);
+		// Pages first (services, contact – the usual link targets), then the newest other posts.
+		$posts = array();
+
+		foreach ( array( array_intersect( $types, array( 'page' ) ), array_diff( $types, array( 'page' ) ) ) as $group ) {
+			$left = self::SITE_PAGES - count( $posts );
+
+			if ( array() === $group || $left <= 0 ) {
+				continue;
+			}
+
+			$posts = array_merge(
+				$posts,
+				get_posts(
+					array(
+						'post_type'              => array_values( $group ),
+						'post_status'            => 'publish',
+						'numberposts'            => $left,
+						'orderby'                => array(
+							'menu_order' => 'ASC',
+							'date'       => 'DESC',
+						),
+						'exclude'                => $exclude > 0 ? array( $exclude ) : array(),
+						'suppress_filters'       => false,
+						'update_post_meta_cache' => false,
+						'update_post_term_cache' => false,
+					)
+				)
+			);
+		}
+
 		$pages = array();
 
 		foreach ( $posts as $post ) {
@@ -227,14 +244,15 @@ final class Texts {
 	}
 
 	/**
-	 * Who asks – the current user's display name.
+	 * Who asks – the current user's display name – and in which language.
 	 *
-	 * @return array{by?: string}
+	 * @return array{by?: string, lang: string}
 	 */
 	private static function by(): array {
 		$user = wp_get_current_user();
 
-		return $user->exists() ? array( 'by' => $user->display_name ) : array();
+		// The language goes along so RankSphere's messages (busy, limits) come in the user's language.
+		return ( $user->exists() ? array( 'by' => $user->display_name ) : array() ) + array( 'lang' => Insights::language() );
 	}
 
 	/**
@@ -251,8 +269,8 @@ final class Texts {
 	/**
 	 * Answers to the open questions – RankSphere writes the text again.
 	 *
-	 * @param int                   $id      RankSphere's id.
-	 * @param array<string, string> $answers Question => answer.
+	 * @param int                $id      RankSphere's id.
+	 * @param array<int, string> $answers Position of the open question => answer.
 	 *
 	 * @return array<mixed>|WP_Error
 	 */
@@ -277,7 +295,13 @@ final class Texts {
 			return self::not_connected();
 		}
 
-		$payload = $client->get( '/texts/' . $id . '/draft', array( 'post_type' => $post_type ) );
+		$payload = $client->get(
+			'/texts/' . $id . '/draft',
+			array(
+				'post_type' => $post_type,
+				'lang'      => Insights::language(),
+			)
+		);
 
 		if ( $payload instanceof WP_Error ) {
 			return $payload;

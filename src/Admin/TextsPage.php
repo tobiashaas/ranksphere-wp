@@ -121,17 +121,28 @@ final class TextsPage {
 			return array();
 		}
 
-		$query = new \WP_Query(
-			array(
-				'post_type'      => $post_type,
-				'post_status'    => array( 'publish', 'draft', 'pending', 'future', 'private' ),
-				'perm'           => 'editable',
-				'posts_per_page' => self::POSTS,
-				'orderby'        => 'modified',
-				's'              => sanitize_text_field( $search ),
-				'no_found_rows'  => true,
-			)
+		$type = get_post_type_object( $post_type );
+		$args = array(
+			'post_type'              => $post_type,
+			'post_status'            => array( 'publish', 'draft', 'pending', 'future', 'private' ),
+			'perm'                   => 'editable',
+			'posts_per_page'         => self::POSTS,
+			'orderby'                => 'modified',
+			's'                      => sanitize_text_field( $search ),
+			'search_columns'         => array( 'post_title' ),
+			'no_found_rows'          => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
 		);
+
+		// Authors and contributors see their own posts – the 30 newest of others would hide them.
+		$others = null !== $type && is_string( $type->cap->edit_others_posts ?? null ) ? $type->cap->edit_others_posts : 'edit_others_posts';
+
+		if ( ! current_user_can( $others ) ) {
+			$args['author'] = get_current_user_id();
+		}
+
+		$query = new \WP_Query( $args );
 		$posts = array();
 
 		foreach ( $query->get_posts() as $post ) {
@@ -177,7 +188,7 @@ final class TextsPage {
 		}
 
 		wp_enqueue_script( 'ranksphere-texts', plugins_url( 'assets/texts.js', \RankSphere\PLUGIN_FILE ), array( 'wp-api-fetch' ), \RankSphere\VERSION, true );
-		wp_localize_script(
+		Ui::script_data(
 			'ranksphere-texts',
 			'rankSphereTexts',
 			array(
@@ -285,9 +296,10 @@ final class TextsPage {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- guard() checked the nonce.
 		$raw = isset( $_POST['answers'] ) && is_array( $_POST['answers'] ) ? map_deep( wp_unslash( $_POST['answers'] ), 'sanitize_textarea_field' ) : array();
 
-		foreach ( $raw as $question => $answer ) {
-			if ( is_string( $question ) && is_string( $answer ) && '' !== trim( $answer ) ) {
-				$answers[ sanitize_text_field( $question ) ] = $answer;
+		// By the question's position: questions with brackets or quotes would not survive as field names.
+		foreach ( $raw as $index => $answer ) {
+			if ( is_int( $index ) && $index >= 0 && $index < 20 && is_string( $answer ) && '' !== trim( $answer ) ) {
+				$answers[ $index ] = $answer;
 			}
 		}
 
@@ -830,7 +842,7 @@ final class TextsPage {
 
 		foreach ( $questions as $i => $question ) {
 			$fields .= '<div class="rs-field"><label for="rs-answer-' . $i . '">' . esc_html( $question ) . '</label>'
-				. '<textarea id="rs-answer-' . $i . '" name="answers[' . esc_attr( $question ) . ']" rows="2" maxlength="3000"></textarea></div>';
+				. '<textarea id="rs-answer-' . $i . '" name="answers[' . (int) $i . ']" rows="2" maxlength="3000"></textarea></div>';
 		}
 
 		return '<p>' . esc_html__( 'RankSphere only writes what you confirm. Answer what you know – the text is written again with it. Placeholders [[…]] mark the spots in the text.', 'ranksphere' ) . '</p>'
@@ -909,18 +921,24 @@ final class TextsPage {
 		}
 
 		$title     = '' !== get_the_title( $source ) ? get_the_title( $source ) : __( '(no title)', 'ranksphere' );
-		$published = ! in_array( $source->post_status, \RankSphere\Content\Drafts::EDITABLE, true );
+		$published = 'revision' === \RankSphere\Content\Drafts::mode_for( $source );
 		$revision  = null !== $saved && $saved->ID !== $source->ID && \RankSphere\Content\Drafts::meta_int( $saved->ID, \RankSphere\Content\Drafts::REVISES_META ) === $source->ID && in_array( $saved->post_status, \RankSphere\Content\Drafts::EDITABLE, true ) ? $saved : null;
 		$notes     = $open_facts ? Ui::note( 'watch', __( 'With open placeholders the draft can be saved, but not published – fill them in first.', 'ranksphere' ) ) : '';
 
 		if ( $published ) {
 			$notes .= Ui::note(
 				'neutral',
-				sprintf(
-					/* translators: %s: title of the published post. */
-					__( '"%s" is published and stays as it is. RankSphere saves the rewrite as a draft next to it; in its editor you take it over into the original.', 'ranksphere' ),
-					$title
-				)
+				in_array( $source->post_status, \RankSphere\Content\Drafts::EDITABLE, true )
+					? sprintf(
+						/* translators: %s: title of the draft. */
+						__( 'WordPress keeps no earlier versions of "%s", so it stays as it is. RankSphere saves the rewrite as a draft next to it; in its editor you take it over into the original.', 'ranksphere' ),
+						$title
+					)
+					: sprintf(
+						/* translators: %s: title of the published post. */
+						__( '"%s" is published and stays as it is. RankSphere saves the rewrite as a draft next to it; in its editor you take it over into the original.', 'ranksphere' ),
+						$title
+					)
 			);
 			$label = null !== $revision ? __( 'Update the revision', 'ranksphere' ) : __( 'Save as revision', 'ranksphere' );
 			$edit  = null !== $revision ? '<a class="rs-link" href="' . esc_url( (string) get_edit_post_link( $revision->ID ) ) . '">' . esc_html__( 'Open the revision', 'ranksphere' ) . '</a>' : '';

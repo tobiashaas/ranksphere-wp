@@ -143,11 +143,14 @@ final class RevisionsTest extends RankSphereTestCase {
 		( new ApplyRevision() )->enqueue( 'post.php' );
 		$_GET = array();
 		self::assertTrue( wp_script_is( 'ranksphere-apply-revision', 'enqueued' ) );
-		$script = wp_scripts()->get_data( 'ranksphere-apply-revision', 'data' );
-		self::assertIsString( $script );
-		$data = json_decode( (string) preg_replace( '/^var rankSphereApply = |;$/', '', $script ), true );
+		$script = wp_scripts()->get_data( 'ranksphere-apply-revision', 'before' );
+		self::assertIsArray( $script );
+		$inline = end( $script );
+		self::assertIsString( $inline );
+		$data = json_decode( (string) preg_replace( '/^var rankSphereApply = |;$/', '', $inline ), true );
 		self::assertIsArray( $data );
 		self::assertSame( 'Wartung für Ihr Haus', $data['title'] ?? null );
+		self::assertSame( $original, $data['original'] ?? null, 'numbers stay numbers' );
 		self::assertStringContainsString( '<p>Wir warten Heizungen.</p>', is_string( $data['content'] ?? null ) ? $data['content'] : '' );
 		self::assertSame( '<p>Live.</p>', get_post( $original )->post_content ?? null );
 		$before = is_numeric( $data['before'] ?? null ) ? (int) $data['before'] : 0;
@@ -182,6 +185,102 @@ final class RevisionsTest extends RankSphereTestCase {
 		self::assertStringContainsString( 'revision.php?revision=' . $before, $original_box, 'WordPress compares and restores' );
 		self::assertStringContainsString( 'Taken over with the revision: SEO title', $original_box );
 		self::assertStringContainsString( 'Taken over into the original', self::text_of( $this->dispatch( self::insights( $revision ) ) ) );
+	}
+
+	public function test_a_revision_draft_stays_a_draft_and_one_with_gaps_is_not_taken_over(): void {
+		$this->connect();
+		$original = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		self::assertIsInt( $original );
+		wp_set_current_user( $this->admin );
+		$text            = self::rewrite( $original );
+		$text['content'] = '<p>Termine ab [[Angabe fehlt: Wochentag]].</p>';
+		$saved           = ( new Drafts() )->save( $text, array() );
+		self::assertIsArray( $saved );
+		$revision = $saved['post_id'];
+
+		wp_update_post(
+			array(
+				'ID'          => $revision,
+				'post_status' => 'publish',
+			)
+		);
+		self::assertSame( 'draft', get_post_status( $revision ), 'published it would be a second page' );
+
+		$box = self::text_of( $this->dispatch( self::insights( $revision ) ) );
+		self::assertStringNotContainsString( ApplyRevision::PARAM . '=', $box );
+		self::assertStringContainsString( 'Fill in the placeholders', $box );
+
+		$_GET = array(
+			'post'               => (string) $original,
+			ApplyRevision::PARAM => (string) $revision,
+			'_wpnonce'           => wp_create_nonce( ApplyRevision::PARAM . '_' . $revision ),
+		);
+		( new ApplyRevision() )->enqueue( 'post.php' );
+		$_GET = array();
+		self::assertFalse( wp_script_is( 'ranksphere-apply-revision', 'enqueued' ) );
+	}
+
+	public function test_the_placeholder_lock_never_takes_a_live_page_offline(): void {
+		$this->connect();
+		wp_set_current_user( $this->admin );
+		$live = self::factory()->post->create(
+			array(
+				'post_status'  => 'publish',
+				'post_content' => '<p>Live.</p>',
+			)
+		);
+		self::assertIsInt( $live );
+		update_post_meta( $live, Drafts::META, 'text-9' );
+
+		wp_update_post(
+			array(
+				'ID'           => $live,
+				'post_content' => '<p>Ab [[Angabe fehlt: Preis]].</p>',
+			)
+		);
+
+		self::assertSame( 'publish', get_post_status( $live ) );
+	}
+
+	public function test_a_draft_without_revisions_is_not_overwritten(): void {
+		register_post_type(
+			'rs_norev',
+			array(
+				'public'   => true,
+				'show_ui'  => true,
+				'supports' => array( 'title', 'editor' ),
+			)
+		);
+		$this->connect();
+		wp_set_current_user( $this->admin );
+		$original = self::factory()->post->create(
+			array(
+				'post_type'    => 'rs_norev',
+				'post_status'  => 'draft',
+				'post_content' => '<p>Nur hier.</p>',
+			)
+		);
+		self::assertIsInt( $original );
+
+		$saved = ( new Drafts() )->save( self::rewrite( $original, 'rs_norev' ), array() );
+		unregister_post_type( 'rs_norev' );
+
+		self::assertIsArray( $saved );
+		self::assertSame( 'revision', $saved['mode'] ?? null, 'WordPress could not keep the text before' );
+		self::assertSame( '<p>Nur hier.</p>', get_post( $original )->post_content ?? null );
+	}
+
+	public function test_a_post_just_opened_in_the_editor_becomes_a_real_draft(): void {
+		$this->connect();
+		wp_set_current_user( $this->admin );
+		$original = self::factory()->post->create( array( 'post_status' => 'auto-draft' ) );
+		self::assertIsInt( $original );
+
+		$saved = ( new Drafts() )->save( self::rewrite( $original ), array() );
+
+		self::assertIsArray( $saved );
+		self::assertSame( 'original', $saved['mode'] ?? null );
+		self::assertSame( 'draft', get_post_status( $original ), 'auto-drafts are deleted after a week' );
 	}
 
 	public function test_a_wrong_link_does_nothing(): void {

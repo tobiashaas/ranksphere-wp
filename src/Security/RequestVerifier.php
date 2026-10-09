@@ -90,14 +90,43 @@ final class RequestVerifier {
 		}
 
 		// Each signature only once: remembered a little longer than it could be valid.
-		$seen = 'ranksphere_sig_' . substr( $signature, 0, 40 );
+		return self::first_use( substr( $signature, 0, 40 ) ) ? null : $refused;
+	}
 
-		if ( false !== get_transient( $seen ) ) {
-			return $refused;
+	/**
+	 * Whether a signature is used for the first time – atomically, so two copies of a request sent
+	 * at the same moment cannot both pass. A persistent object cache adds atomically; without one
+	 * the options table's unique name does (INSERT IGNORE), cleaned up now and then.
+	 *
+	 * @param string $key Start of the signature (hex).
+	 */
+	public static function first_use( string $key ): bool {
+		$name = 'ranksphere_sig_' . $key;
+
+		if ( wp_using_ext_object_cache() ) {
+			return wp_cache_add( $name, 1, 'ranksphere_signatures', 2 * Signature::TOLERANCE );
 		}
 
-		set_transient( $seen, 1, 2 * Signature::TOLERANCE );
+		$wpdb = $GLOBALS['wpdb'] ?? null;
 
-		return null;
+		if ( ! $wpdb instanceof \wpdb ) {
+			return false;
+		}
+
+		$insert = $wpdb->prepare( "INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, 'off')", $wpdb->options, $name, (string) time() );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared -- prepared above; an atomic insert is the point, nothing to cache.
+		$inserted = is_string( $insert ) ? $wpdb->query( $insert ) : false;
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.rand_mt_rand -- not security relevant, only spreads the cleanup.
+		if ( 1 === mt_rand( 1, 50 ) ) {
+			$expired = $wpdb->prepare( 'DELETE FROM %i WHERE option_name LIKE %s AND option_value < %d', $wpdb->options, $wpdb->esc_like( 'ranksphere_sig_' ) . '%', time() - 2 * Signature::TOLERANCE );
+
+			if ( is_string( $expired ) ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared -- prepared above; removes the plugin's own expired rows.
+				$wpdb->query( $expired );
+			}
+		}
+
+		return 1 === $inserted;
 	}
 }

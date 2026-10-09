@@ -88,6 +88,13 @@ final class InsightsTest extends RankSphereTestCase {
 		);
 	}
 
+	public function test_links_from_ranksphere_are_https_or_a_local_development_address(): void {
+		self::assertSame( 'https://ranksphere.cloud/x', \RankSphere\Insights\Value::link( array( 'u' => 'https://ranksphere.cloud/x' ), 'u' ) );
+		self::assertSame( 'http://localhost:8002/x', \RankSphere\Insights\Value::link( array( 'u' => 'http://localhost:8002/x' ), 'u' ) );
+		self::assertSame( '', \RankSphere\Insights\Value::link( array( 'u' => 'http://localhost.evil.test/x' ), 'u' ) );
+		self::assertSame( '', \RankSphere\Insights\Value::link( array( 'u' => 'javascript:alert(1)' ), 'u' ) );
+	}
+
 	public function test_the_overview_is_fetched_signed_and_kept_for_ten_minutes(): void {
 		$this->connect();
 
