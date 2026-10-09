@@ -60,6 +60,10 @@ final class Drafts {
 
 		$existing = $this->find( $draft['ranksphere_id'] );
 
+		if ( null !== $existing && ! current_user_can( 'edit_post', $existing->ID ) ) {
+			return self::not_yours();
+		}
+
 		if ( null !== $existing && ! in_array( $existing->post_status, self::EDITABLE, true ) ) {
 			return new WP_Error(
 				'ranksphere_already_published',
@@ -120,24 +124,26 @@ final class Drafts {
 	 * @return array{post_id: int, created: bool, mode: string, revises: int}|WP_Error
 	 */
 	private function save_for( ?\WP_Post $original, array $draft, array $seo ): array|WP_Error {
-		if ( null === $original || 'trash' === $original->post_status || ! current_user_can( 'edit_post', $original->ID ) ) {
+		if ( null === $original || 'trash' === $original->post_status || ! current_user_can( 'edit_post', $original->ID ) || ! array_key_exists( $original->post_type, Texts::post_types() ) ) {
 			return new WP_Error( 'ranksphere_forbidden', __( 'The post this text is for no longer exists or you may not edit it.', 'ranksphere' ), array( 'status' => 403 ) );
 		}
 
 		$text = self::text_id( $draft['ranksphere_id'] );
 
-		if ( in_array( $original->post_status, self::EDITABLE, true ) ) {
+		if ( 'original' === self::mode_for( $original ) ) {
 			$before  = TextHistory::keep_current( $original->ID );
-			$post_id = wp_update_post(
-				wp_slash(
-					array(
-						'ID'           => $original->ID,
-						'post_title'   => $draft['title'],
-						'post_content' => wp_kses_post( $draft['content'] ),
-					)
-				),
-				true
+			$postarr = array(
+				'ID'           => $original->ID,
+				'post_title'   => $draft['title'],
+				'post_content' => wp_kses_post( $draft['content'] ),
 			);
+
+			// A post just opened in the editor is an auto-draft, which WordPress deletes after a week.
+			if ( 'auto-draft' === $original->post_status ) {
+				$postarr['post_status'] = 'draft';
+			}
+
+			$post_id = wp_update_post( wp_slash( $postarr ), true );
 
 			if ( $post_id instanceof WP_Error ) {
 				return new WP_Error( 'ranksphere_invalid_content', $post_id->get_error_message(), array( 'status' => 400 ) );
@@ -155,11 +161,15 @@ final class Drafts {
 			);
 		}
 
-		// Published (or scheduled, private): the original stays as it is.
+		// Published (or scheduled, private), or a draft whose content WordPress could not keep: the original stays as it is.
 		$existing = $this->find( $draft['ranksphere_id'] );
 
 		if ( null !== $existing && ( ! in_array( $existing->post_status, self::EDITABLE, true ) || self::meta_int( $existing->ID, self::REVISES_META ) !== $original->ID ) ) {
 			$existing = null;
+		}
+
+		if ( null !== $existing && ! current_user_can( 'edit_post', $existing->ID ) ) {
+			return self::not_yours();
 		}
 
 		$postarr = array(
@@ -196,6 +206,28 @@ final class Drafts {
 			'mode'    => 'revision',
 			'revises' => $original->ID,
 		);
+	}
+
+	/**
+	 * Where a text for an existing post goes: into the post itself ("original") while it is not
+	 * published and its content before can be kept as WordPress revision (or it is empty), else
+	 * into a revision draft next to it ("revision") – nothing is ever overwritten without a way back.
+	 *
+	 * @param \WP_Post $post The post the text is for.
+	 */
+	public static function mode_for( \WP_Post $post ): string {
+		if ( ! in_array( $post->post_status, self::EDITABLE, true ) ) {
+			return 'revision';
+		}
+
+		return '' === trim( $post->post_content ) || wp_revisions_enabled( $post ) ? 'original' : 'revision';
+	}
+
+	/**
+	 * Someone else's draft of this text, which the current user may not edit.
+	 */
+	private static function not_yours(): WP_Error {
+		return new WP_Error( 'ranksphere_forbidden', __( 'Someone else already saved this text as draft, and you may not edit it. Ask them or an editor to update it.', 'ranksphere' ), array( 'status' => 403 ) );
 	}
 
 	/**
@@ -239,8 +271,9 @@ final class Drafts {
 	public function find( string $ranksphere_id ): ?\WP_Post {
 		$posts = get_posts(
 			array(
-				'post_type'   => 'any',
-				'post_status' => 'any',
+				// All types: "any" leaves out types excluded from search (custom "Leistungen" and the like).
+				'post_type'   => array_values( get_post_types() ),
+				'post_status' => array_values( array_diff( get_post_stati(), array( 'trash', 'inherit' ) ) ),
 				'meta_key'    => self::META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one lookup per request.
 				'meta_value'  => $ranksphere_id, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- one lookup per request.
 				'numberposts' => 1,

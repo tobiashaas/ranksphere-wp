@@ -1,6 +1,6 @@
 /**
  * "Take over into the original": fills the revision's title and text into the original's editor as
- * unsaved changes. Nothing goes live until the author clicks "Update"; then the server records it
+ * unsaved changes. Nothing changes until the author saves; then the server records it
  * (Admin\ApplyRevision). Block editor and classic editor.
  */
 ( function () {
@@ -35,7 +35,7 @@
 				return;
 			}
 
-			// wp_localize_script() hands numbers over as strings.
+			// Numbers may arrive as strings (older versions handed them over with wp_localize_script()).
 			if ( ! editor || Number( editor.getCurrentPostId() ) !== Number( data.original ) ) {
 				return;
 			}
@@ -49,30 +49,44 @@
 		}, 100 );
 	}
 
-	// After the author's own save: tell the server, once.
+	// After the author's own save: tell the server, once – after the SEO plugin's meta boxes are
+	// saved too, so their old values do not overwrite the fields taken over.
 	function watchSave( wp ) {
 		var editor = wp.data.select( 'core/editor' );
 		var saving = false;
+		var timer = null;
 		var unsubscribe = wp.data.subscribe( function () {
-			var now = editor.isSavingPost() && ! editor.isAutosavingPost();
+			var postScreen = wp.data.select( 'core/edit-post' );
+			var now = ( editor.isSavingPost() && ! editor.isAutosavingPost() ) || Boolean( postScreen && postScreen.isSavingMetaBoxes && postScreen.isSavingMetaBoxes() );
 
-			if ( saving && ! now ) {
+			if ( now ) {
+				saving = true;
+				window.clearTimeout( timer );
+			} else if ( saving ) {
 				saving = false;
 
-				if ( editor.didPostSaveRequestSucceed() && 'publish' === editor.getEditedPostAttribute( 'status' ) ) {
-					unsubscribe();
-					wp.apiFetch( {
-						path: '/ranksphere/v1/revisions/applied',
-						method: 'POST',
-						data: { original: Number( data.original ), revision: Number( data.revision ), before: Number( data.before ) },
-					} ).then( function () {
-						wp.data.dispatch( 'core/notices' ).removeNotice( 'ranksphere-apply' );
-						wp.data.dispatch( 'core/notices' ).createSuccessNotice( data.applied, { id: 'ranksphere-applied', isDismissible: true } );
-					} );
-				}
-			} else if ( now ) {
-				saving = true;
+				// The meta boxes start saving right after the post: wait a moment for them.
+				timer = window.setTimeout( function () {
+					if ( editor.didPostSaveRequestSucceed() ) {
+						unsubscribe();
+						record( wp );
+					}
+				}, 500 );
 			}
+		} );
+	}
+
+	function record( wp ) {
+		wp.apiFetch( {
+			path: '/ranksphere/v1/revisions/applied',
+			method: 'POST',
+			data: { original: Number( data.original ), revision: Number( data.revision ), before: Number( data.before ) },
+		} ).then( function () {
+			wp.data.dispatch( 'core/notices' ).removeNotice( 'ranksphere-apply' );
+			wp.data.dispatch( 'core/notices' ).createSuccessNotice( data.applied, { id: 'ranksphere-applied', isDismissible: true } );
+		} ).catch( function () {
+			wp.data.dispatch( 'core/notices' ).removeNotice( 'ranksphere-apply' );
+			wp.data.dispatch( 'core/notices' ).createErrorNotice( data.failed, { id: 'ranksphere-applied', isDismissible: true } );
 		} );
 	}
 
@@ -115,7 +129,7 @@
 	}
 
 	function start() {
-		if ( data.block && '0' !== data.block && window.wp && window.wp.data && window.wp.blocks ) {
+		if ( data.block && window.wp && window.wp.data && window.wp.blocks ) {
 			blockEditor();
 		} else {
 			classicEditor();

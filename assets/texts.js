@@ -145,10 +145,27 @@
 			// Without storage it simply keeps looking.
 		}
 
-		if ( waiting && rounds < 40 ) {
+		// Never while someone types into a field: the reload would throw their words away.
+		var typing = false;
+
+		document.querySelectorAll( '.ranksphere textarea, .ranksphere input[type="text"], .ranksphere input[type="search"]' ).forEach( function ( field ) {
+			field.addEventListener( 'input', function () {
+				typing = '' !== field.value.trim() || typing;
+			} );
+		} );
+
+		function reloadLater() {
 			window.setTimeout( function () {
-				window.location.reload();
+				if ( typing ) {
+					reloadLater();
+				} else {
+					window.location.reload();
+				}
 			}, 8000 );
+		}
+
+		if ( waiting && rounds < 40 ) {
+			reloadLater();
 		}
 	}
 

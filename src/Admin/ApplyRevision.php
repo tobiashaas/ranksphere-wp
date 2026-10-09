@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace RankSphere\Admin;
 
 use RankSphere\Content\Drafts;
+use RankSphere\Content\PlaceholderLock;
 use RankSphere\Content\TextHistory;
 use RankSphere\Rest\ConnectionController;
 use RankSphere\Seo\SeoService;
@@ -80,9 +81,10 @@ final class ApplyRevision {
 	 * @param int $original The original.
 	 */
 	public static function revision_for( int $revision, int $original ): ?WP_Post {
-		$post = get_post( $revision );
+		$post   = get_post( $revision );
+		$target = get_post( $original );
 
-		if ( ! $post instanceof WP_Post || 'trash' === $post->post_status || Drafts::meta_int( $revision, Drafts::REVISES_META ) !== $original ) {
+		if ( ! $post instanceof WP_Post || ! $target instanceof WP_Post || 'trash' === $post->post_status || 'trash' === $target->post_status || Drafts::meta_int( $revision, Drafts::REVISES_META ) !== $original ) {
 			return null;
 		}
 
@@ -112,14 +114,29 @@ final class ApplyRevision {
 
 		$post = self::revision_for( $revision, $original );
 
-		if ( null === $post ) {
+		// A text with open placeholders would go live with them.
+		if ( null === $post || PlaceholderLock::has_placeholders( $post->post_content ) ) {
 			return;
 		}
 
-		$before = TextHistory::keep_current( $original );
+		$before   = TextHistory::keep_current( $original );
+		$block    = use_block_editor_for_post( $original );
+		$current  = get_post( $original );
+		$inserted = __( 'RankSphere\'s revision is filled in. Check it and save to take it over – until then nothing changes on the website. The current version stays as revision.', 'ranksphere' );
 
-		wp_enqueue_script( 'ranksphere-apply-revision', plugins_url( 'assets/apply-revision.js', \RankSphere\PLUGIN_FILE ), array( 'wp-api-fetch' ), \RankSphere\VERSION, true );
-		wp_localize_script(
+		// Without revisions for this post type the current text cannot be kept: say so before it is replaced.
+		if ( 0 === $before && $current instanceof WP_Post && '' !== trim( $current->post_content ) ) {
+			$inserted = __( 'RankSphere\'s revision is filled in. WordPress keeps no earlier versions of this post – once you save, the current text is gone. Copy it first if you may need it.', 'ranksphere' );
+		}
+
+		wp_enqueue_script(
+			'ranksphere-apply-revision',
+			plugins_url( 'assets/apply-revision.js', \RankSphere\PLUGIN_FILE ),
+			$block ? array( 'wp-api-fetch', 'wp-data', 'wp-blocks', 'wp-notices', 'wp-editor' ) : array(),
+			\RankSphere\VERSION,
+			true
+		);
+		Ui::script_data(
 			'ranksphere-apply-revision',
 			'rankSphereApply',
 			array(
@@ -128,15 +145,16 @@ final class ApplyRevision {
 				'before'   => $before,
 				'title'    => $post->post_title,
 				'content'  => $post->post_content,
-				'block'    => use_block_editor_for_post( $original ),
+				'block'    => $block,
 				'nonce'    => wp_create_nonce( self::FIELD ),
 				'fields'   => array(
 					'revision' => self::FIELD,
 					'before'   => self::BEFORE_FIELD,
 					'nonce'    => self::NONCE_FIELD,
 				),
-				'inserted' => __( 'RankSphere\'s revision is filled in. Check it and click "Update" to publish it – until then nothing changes on the website. The current version stays as revision.', 'ranksphere' ),
+				'inserted' => $inserted,
 				'applied'  => __( 'Revision taken over, with its SEO title and description. Reload the page before you save again – the SEO plugin\'s fields may still show the old values.', 'ranksphere' ),
+				'failed'   => __( 'The text is saved, but RankSphere could not record the takeover (SEO fields and history). Reload the page and check the SEO fields.', 'ranksphere' ),
 			)
 		);
 	}
@@ -178,6 +196,11 @@ final class ApplyRevision {
 	 * @phpstan-param WP_REST_Request<array<string, mixed>> $request
 	 */
 	public function applied_route( WP_REST_Request $request ): WP_REST_Response {
+		// Once per takeover: a repeated call would copy the SEO fields and add history again.
+		if ( Drafts::meta_int( self::param( $request, 'revision' ), Drafts::APPLIED_META ) > 0 ) {
+			return new WP_REST_Response( array( 'applied' => true ) );
+		}
+
 		$this->applied( self::param( $request, 'original' ), self::param( $request, 'revision' ), self::param( $request, 'before' ) );
 
 		return new WP_REST_Response( array( 'applied' => true ) );
@@ -210,7 +233,7 @@ final class ApplyRevision {
 		$before   = isset( $_POST[ self::BEFORE_FIELD ] ) && is_string( $_POST[ self::BEFORE_FIELD ] ) ? absint( $_POST[ self::BEFORE_FIELD ] ) : 0;
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
-		if ( 0 === $revision || false !== wp_is_post_revision( $post_id ) || defined( 'DOING_AUTOSAVE' ) || 'publish' !== $post->post_status ) {
+		if ( 0 === $revision || false !== wp_is_post_revision( $post_id ) || defined( 'DOING_AUTOSAVE' ) || in_array( $post->post_status, array( 'auto-draft', 'trash' ), true ) ) {
 			return;
 		}
 

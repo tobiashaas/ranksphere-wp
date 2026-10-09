@@ -21,6 +21,24 @@ $ranksphere_cleanup = static function (): void {
 
 	// Cached data from RankSphere; the per-page caches expire on their own within ten minutes.
 	delete_transient( RankSphere\Insights\Insights::OVERVIEW_CACHE );
+
+	// Bookkeeping on posts (which text, revision of what, history). SEO titles and descriptions
+	// written into the posts stay: they are the site's content, and SEO plugins may read them.
+	foreach ( array( RankSphere\Content\Drafts::META, RankSphere\Content\Drafts::REVISES_META, RankSphere\Content\Drafts::APPLIED_META, RankSphere\Content\TextHistory::META, RankSphere\Seo\History::META ) as $ranksphere_meta ) {
+		delete_post_meta_by_key( $ranksphere_meta );
+	}
+
+	// Signatures seen (replay protection).
+	$ranksphere_db = $GLOBALS['wpdb'] ?? null;
+
+	if ( $ranksphere_db instanceof wpdb ) {
+		$ranksphere_sql = $ranksphere_db->prepare( 'DELETE FROM %i WHERE option_name LIKE %s', $ranksphere_db->options, $ranksphere_db->esc_like( 'ranksphere_sig_' ) . '%' );
+
+		if ( is_string( $ranksphere_sql ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared -- prepared above; the plugin's own rows, once on uninstall.
+			$ranksphere_db->query( $ranksphere_sql );
+		}
+	}
 };
 
 if ( is_multisite() ) {

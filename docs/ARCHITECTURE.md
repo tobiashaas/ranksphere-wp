@@ -121,7 +121,7 @@ läuft zusätzlich durch `wp_kses_post`.
 hinein, Inhalt davor als WordPress-Revision; veröffentlichtes Original → **nie anfassen**, sondern Überarbeitungs-Entwurf
 (`_ranksphere_revises`). In dessen Editor-Box „In Original übernehmen“ (`Admin\ApplyRevision`): öffnet das Original mit
 Titel und Text als ungespeicherte Änderung (Block-Editor über `core/editor`, klassischer Editor über das Formular),
-live geht es erst mit „Aktualisieren“ des Autors; vorher wird der Live-Stand als Revision gesichert, danach folgen die
+geändert wird erst, wenn der Autor dort speichert; vorher wird der Live-Stand als Revision gesichert, danach folgen die
 SEO-Felder (mit SEO-Verlauf). Der **Verlauf** in der Box (`Admin\PostHistory`) zeigt Text-Ereignisse
 (`Content\TextHistory`) und SEO-Änderungen; „Vergleichen oder wiederherstellen“ führt in WordPress' eigene
 Revisionsansicht – kein zweiter Speicher für Inhalte. Page-Builder mit eigenem Editor sind nicht abgedeckt.
@@ -130,6 +130,16 @@ Revisionsansicht – kein zweiter Speicher für Inhalte. Page-Builder mit eigene
 die einen Text brauchen (`/texts/ideas`, 10 min gehalten) – ein Klick füllt das Formular (`?type=&topic=&path=`); die
 Editor-Box verlinkt „Mit RankSphere überarbeiten“ (`?post=`). Am fertigen Text: „Nachbessern“ mit freiem Hinweis
 (RankSphere überarbeitet die aktuelle Fassung) und „Versionen“ mit Ansehen und Wiederherstellen (ohne KI-Kosten).
+
+**Schutzregeln** (ab 1.0.0-alpha.8): Ein Überarbeitungs-Entwurf bleibt immer Entwurf (`PlaceholderLock` setzt ihn
+zurück – veröffentlicht wäre er eine zweite Seite); übernehmen geht erst ohne offene Platzhalter. Die Platzhalter-Sperre
+nimmt nie eine schon veröffentlichte Seite offline. Ein Entwurf, dessen Beitragstyp keine Revisionen kennt, wird nicht
+überschrieben (`Drafts::mode_for()` → Überarbeitungs-Entwurf); ein Auto-Draft wird beim Füllen zum echten Entwurf.
+Einen Entwurf, den der Benutzer nicht bearbeiten darf, überschreibt das Plugin nicht (`403`). Übernommen wird in jedem
+Status des Originals, erst nachdem die Metaboxen des SEO-Plugins gespeichert sind (sonst überschreiben sie die
+übernommenen Felder), einmal je Überarbeitung. Daten an Skripte gehen über `Ui::script_data()` (JSON, keine
+Entity-Dekodierung wie bei `wp_localize_script`). Antworten auf offene Fragen werden nach Position geschickt. Jede
+Signatur zählt einmal – atomar über `wp_cache_add` bzw. `INSERT IGNORE` in `wp_options`.
 
 **Übersetzung:** Quelltexte Englisch; Deutsch liegt als `languages/ranksphere-de_DE.l10n.php` bei (WordPress' PHP-Format
 ab 6.5), bis translate.wordpress.org übernimmt. `tests/Unit/TranslationsTest.php` prüft, dass jeder Text übersetzt ist.
