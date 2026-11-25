@@ -527,6 +527,8 @@ final class PageBox {
 			$html .= '</ul>';
 		}
 
+		$html .= self::ai( Value::map( $data, 'ai' ) );
+
 		if ( $broken > 0 ) {
 			$html .= Ui::note(
 				'watch',
@@ -536,6 +538,46 @@ final class PageBox {
 		}
 
 		return $html . self::link( Value::link( $data, 'url' ), __( 'This page in RankSphere', 'ranksphere' ) );
+	}
+
+	/**
+	 * How the AIs cite this page in RankSphere's latest AI measurement; '' without a measurement.
+	 *
+	 * @param array<string, mixed>|null $ai The "ai" part of the page data.
+	 */
+	private static function ai( ?array $ai ): string {
+		if ( null === $ai ) {
+			return '';
+		}
+
+		$citations = (int) ( Value::number( $ai, 'citations' ) ?? 0 );
+		$html      = '<h4>' . esc_html__( 'Cited by AI', 'ranksphere' ) . '</h4>';
+
+		if ( 0 === $citations ) {
+			return $html . '<p class="rs-muted">' . esc_html__( 'No AI answer in the latest measurement cites this page.', 'ranksphere' ) . '</p>';
+		}
+
+		$html .= '<p>' . esc_html(
+			sprintf(
+				/* translators: 1: number of AI answers, 2: AI models, e.g. "ChatGPT, Google AI Overview". */
+				_n( 'Cited in %1$d AI answer (%2$s).', 'Cited in %1$d AI answers (%2$s).', $citations, 'ranksphere' ),
+				$citations,
+				implode( ', ', Value::texts( $ai, 'platforms' ) )
+			)
+		) . '</p>';
+		$questions = Value::texts( $ai, 'questions' );
+
+		if ( array() !== $questions ) {
+			$html .= '<ul class="ranksphere-queries">';
+
+			foreach ( $questions as $question ) {
+				$html .= '<li><span>' . esc_html( $question ) . '</span></li>';
+			}
+
+			$html .= '</ul>';
+		}
+
+		return $html;
 	}
 
 	/**

@@ -200,6 +200,8 @@ final class InsightsTest extends RankSphereTestCase {
 		self::assertStringContainsString( 'Pos. 4.2', $html );
 		self::assertStringContainsString( 'Title too long', $html );
 		self::assertStringContainsString( 'Backlinks point to 2 dead addresses', $html );
+		self::assertStringContainsString( 'Cited in 3 AI answers (ChatGPT, Google AI Overview).', $html );
+		self::assertStringContainsString( 'wartung &lt;i&gt;', $html, 'escaped' );
 		self::assertCount( 1, $this->asked );
 		self::assertStringContainsString( 'url=' . rawurlencode( (string) get_permalink( $post ) ), $this->asked[0] );
 
@@ -386,6 +388,12 @@ final class InsightsTest extends RankSphereTestCase {
 				),
 			),
 			'broken_backlinks' => 2,
+			'ai'               => array(
+				'measured_at' => '2026-11-20',
+				'citations'   => 3,
+				'platforms'   => array( 'ChatGPT', 'Google AI Overview' ),
+				'questions'   => array( 'wartung <i>' ),
+			),
 			'url'              => 'https://ranksphere.test/projects/muster/search?tab=pages&search=%2Fhello%2F',
 		);
 	}
