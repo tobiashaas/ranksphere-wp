@@ -543,7 +543,7 @@ final class PageBox {
 	/**
 	 * How the AIs cite this page in RankSphere's latest AI measurement; '' without a measurement.
 	 *
-	 * @param array<string, mixed>|null $ai The "ai" part of the page data.
+	 * @param array<mixed>|null $ai The "ai" part of the page data.
 	 */
 	private static function ai( ?array $ai ): string {
 		if ( null === $ai ) {
