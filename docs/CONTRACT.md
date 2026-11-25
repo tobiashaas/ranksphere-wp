@@ -203,7 +203,12 @@ Transient (je Sprache und Projekt), eine fehlgeschlagene 2 Minuten.
 
 `GET /pages` → `{ "path", "period", "search": { clicks, previous_clicks, impressions, previous_impressions, position,
 previous_position } | null, "queries": [ { query, clicks, impressions, position } ], "analytics", "website_check":
-[ { code, severity: error|warning|notice, title, fix } ] | null, "broken_backlinks": 2, "url" }`.
+[ { code, severity: error|warning|notice, title, fix } ] | null, "broken_backlinks": 2, "ai": { "measured_at": "2026-11-20",
+"citations": 3, "platforms": [ "ChatGPT", "Google AI Overview" ], "questions": [ "…" ] } | null, "url" }`.
+
+`ai` = wie die KI diese Seite in der letzten KI-Messung zitiert (Fragen höchstens 5, Modelle als Namen); `null` = das
+Projekt hat noch keine KI-Messung, `citations: 0` = gemessen, aber nicht zitiert. Fehlt das Feld (älteres RankSphere),
+zeigt die Box nichts dazu.
 
 `previous` ist `null`, wenn der Zeitraum davor kein fairer Vergleich ist (neues Projekt, Datenlücken) – dann zeigt das
 Plugin keine Veränderung. Aufgaben ohne Einrichtungsschritte (die sind für RankSphere, nicht für WordPress).
