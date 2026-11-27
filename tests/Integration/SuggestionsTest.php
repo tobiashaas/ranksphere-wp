@@ -131,6 +131,8 @@ final class SuggestionsTest extends RankSphereTestCase {
 
 		self::assertSame( 'applied', self::text( $response, 'status' ) );
 		self::assertStringContainsString( 'data-ranksphere-reload', self::text( $response, 'html' ) );
+		self::assertSame( 'Heizungswartung: Kosten & Ablauf', self::text( $response, 'value' ), 'the stored value, for the SEO plugin\'s field on the edit screen' );
+		self::assertStringNotContainsString( 'data-ranksphere-reload', self::text( $response, 'filled' ), 'nothing to reload once the field is filled' );
 		self::assertSame( 'Heizungswartung: Kosten & Ablauf', SeoService::current()->read( $post )['title'] );
 
 		$history = ( new History() )->all( $post );

@@ -113,6 +113,7 @@ return array(
 		'Meta description saved.'                        => 'Meta-Beschreibung gespeichert.',
 		'Reload the page before you save the post – otherwise the SEO plugin\'s fields still hold the old value and saving would bring it back.' => 'Lade die Seite neu, bevor du den Beitrag speicherst – sonst stehen in den Feldern des SEO-Plugins noch die alten Werte, und Speichern würde sie zurückholen.',
 		'Reload page'                                    => 'Seite neu laden',
+		'The new value is already in the SEO plugin\'s field on this page.' => 'Der neue Wert steht auch schon im Feld des SEO-Plugins auf dieser Seite.',
 		'Try again'                                      => 'Erneut versuchen',
 		'RankSphere is writing a suggestion …'           => 'RankSphere schreibt einen Vorschlag …',
 		'The suggestion could not be created.'           => 'Der Vorschlag konnte nicht erstellt werden.',

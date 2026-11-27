@@ -36,6 +36,25 @@ final class PageBox {
 	private const QUERIES = 5;
 
 	/**
+	 * The SEO plugin's own fields on the edit screen, per adapter slug – only plugins whose fields
+	 * are plain inputs (checked in their source). "Apply" fills them too, so saving the post keeps
+	 * the new value. Fields that live in a React/Vue store (Yoast, Rank Math, AIOSEO, Slim SEO)
+	 * would ignore a changed input; there the box asks to reload instead.
+	 *
+	 * @var array<string, array{title: string, description: string}>
+	 */
+	public const EDITOR_FIELDS = array(
+		'wp-seopress'     => array(
+			'title'       => '#seopress_titles_title_meta',
+			'description' => '#seopress_titles_desc_meta',
+		),
+		'autodescription' => array(
+			'title'       => '#autodescription_title',
+			'description' => '#autodescription_description',
+		),
+	);
+
+	/**
 	 * Takes the connection store.
 	 *
 	 * @param ConnectionStore $store Where the connection lives.
@@ -256,16 +275,20 @@ final class PageBox {
 			);
 		}
 
-		$html = Ui::note(
+		$saved = 'title' === $field ? __( 'SEO title saved.', 'ranksphere' ) : __( 'Meta description saved.', 'ranksphere' );
+		$html  = Ui::note(
 			'good',
-			( 'title' === $field ? __( 'SEO title saved.', 'ranksphere' ) : __( 'Meta description saved.', 'ranksphere' ) )
-			. ' ' . __( 'Reload the page before you save the post – otherwise the SEO plugin\'s fields still hold the old value and saving would bring it back.', 'ranksphere' )
+			$saved . ' ' . __( 'Reload the page before you save the post – otherwise the SEO plugin\'s fields still hold the old value and saving would bring it back.', 'ranksphere' )
 		) . '<p><button type="button" class="rs-button rs-button-small rs-button-outline" data-ranksphere-reload>' . Ui::icon( 'refresh' ) . esc_html__( 'Reload page', 'ranksphere' ) . '</button></p>';
 
 		return new WP_REST_Response(
 			array(
 				'status' => 'applied',
 				'html'   => $html,
+				// The value as stored (cleaned), for the SEO plugin's field on the edit screen.
+				'value'  => is_string( $result['after'][ $field ] ?? null ) ? $result['after'][ $field ] : $value,
+				// When the script could fill the SEO plugin's field on this screen, nothing is left to do.
+				'filled' => Ui::note( 'good', $saved . ' ' . __( 'The new value is already in the SEO plugin\'s field on this page.', 'ranksphere' ) ),
 			)
 		);
 	}
@@ -302,7 +325,9 @@ final class PageBox {
 	 * @param array<mixed> $state RankSphere's answer.
 	 */
 	private static function proposal( WP_Post $post, array $state ): string {
-		$current = SeoService::current()->read( $post->ID );
+		$service = SeoService::current();
+		$current = $service->read( $post->ID );
+		$editor  = self::EDITOR_FIELDS[ $service->adapter()->slug() ] ?? null;
 		$labels  = array(
 			'title'       => __( 'SEO title', 'ranksphere' ),
 			'description' => __( 'Meta description', 'ranksphere' ),
@@ -323,7 +348,8 @@ final class PageBox {
 				. '<p class="ranksphere-proposal-actions"><span class="rs-muted">' . esc_html(
 					/* translators: %d: number of characters. */
 					sprintf( _n( '%d character', '%d characters', mb_strlen( $value ), 'ranksphere' ), mb_strlen( $value ) )
-				) . '</span> <button type="button" class="rs-button rs-button-small" data-ranksphere-apply="' . esc_attr( $field ) . '" data-value="' . esc_attr( $value ) . '">' . esc_html__( 'Apply', 'ranksphere' ) . '</button></p></div>';
+				) . '</span> <button type="button" class="rs-button rs-button-small" data-ranksphere-apply="' . esc_attr( $field ) . '" data-value="' . esc_attr( $value ) . '"'
+					. ( null === $editor ? '' : ' data-editor-field="' . esc_attr( $editor[ $field ] ) . '"' ) . '>' . esc_html__( 'Apply', 'ranksphere' ) . '</button></p></div>';
 		}
 
 		return $html . self::suggest_button( __( 'New suggestion', 'ranksphere' ), 'rs-button-link' );
