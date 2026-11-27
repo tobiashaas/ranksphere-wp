@@ -54,6 +54,26 @@
 		}
 	}
 
+	/**
+	 * Puts the applied value into the SEO plugin's own field on this screen (Admin\PageBox::EDITOR_FIELDS),
+	 * so its counters and preview follow and saving the post keeps the value. False when the field is
+	 * not here (other SEO plugin, other editor layout) – the box then asks to reload.
+	 */
+	function fillEditorField( selector, value ) {
+		var field = selector ? document.querySelector( selector ) : null;
+
+		if ( ! ( field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement ) ) {
+			return false;
+		}
+
+		field.value = value;
+		[ 'input', 'change', 'keyup' ].forEach( function ( type ) {
+			field.dispatchEvent( new Event( type, { bubbles: true } ) );
+		} );
+
+		return field.value === value;
+	}
+
 	function onClick( box, event ) {
 		var button = event.target instanceof Element ? event.target.closest( 'button' ) : null;
 		var target = box.querySelector( '[data-ranksphere-suggestion]' );
@@ -90,7 +110,19 @@
 				.then( function ( response ) {
 					var result = document.createElement( 'div' );
 					var proposal = button.closest( '.ranksphere-proposal' );
-					result.innerHTML = response && typeof response.html === 'string' ? response.html : '';
+					var html = response && typeof response.html === 'string' ? response.html : '';
+
+					if (
+						response &&
+						'applied' === response.status &&
+						typeof response.value === 'string' &&
+						typeof response.filled === 'string' &&
+						fillEditorField( button.getAttribute( 'data-editor-field' ), response.value )
+					) {
+						html = response.filled;
+					}
+
+					result.innerHTML = html;
 
 					if ( proposal ) {
 						proposal.replaceWith( result );

@@ -137,9 +137,11 @@ angelegt wird (`POST /drafts` mit diesem `post_type`); ohne die Liste (ältere P
 (`POST /suggestions` mit Permalink, den aktuellen Werten des SEO-Plugins und dem Text des Beitrags ohne Shortcodes),
 `GET` fragt den Stand ab (das Skript alle 3 s, solange `pending`). Antwort jeweils `{ "status": "none|pending|done|failed",
 "html": "…" }`, auf dem Server gerendert und escaped. `apply` mit `field` (`title|description`) und `value` schreibt über
-das SEO-Plugin mit Verlauf (`source: suggestion`) und meldet die Änderung an RankSphere (`POST /changes`); der Hinweis
-danach bittet, die Seite neu zu laden, bevor der Beitrag gespeichert wird (sonst schreiben die Felder des SEO-Plugins im
-Editor den alten Wert zurück).
+das SEO-Plugin mit Verlauf (`source: suggestion`) und meldet die Änderung an RankSphere (`POST /changes`). Antwort
+zusätzlich mit `value` (gespeicherter Wert) und `filled` (Hinweis ohne Neu-laden): Bei SEO-Plugins mit schlichten
+Eingabefeldern (SEOPress, The SEO Framework; `PageBox::EDITOR_FIELDS`) trägt das Skript `value` direkt in deren Feld im
+Editor ein und zeigt `filled`. Sonst (Felder in React/Vue: Yoast, Rank Math, AIOSEO, Slim SEO) bittet `html`, die Seite
+neu zu laden, bevor der Beitrag gespeichert wird – die Felder des SEO-Plugins würden den alten Wert zurückschreiben.
 
 ### `GET /editable-posts?post_type=…&search=…`, `POST /revisions/applied` (ab 1.0.0-alpha.7, nur eingeloggte Benutzer)
 
